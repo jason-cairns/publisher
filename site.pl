@@ -1,5 +1,4 @@
 :- use_module(library(dcgs)).
-:- use_module(library(lists)).
 :- use_module(library(os)).
 :- use_module(library(pio)).
 
@@ -20,50 +19,38 @@ main :-
     halt(1).
 
 transform(InputDir, OutputDir) :-
-    path_join(InputDir, "index.html", InputPath),
-    path_join(OutputDir, "index.html", OutputPath),
+    directory_file_path(InputDir, "index.html", InputPath),
+    directory_file_path(OutputDir, "index.html", OutputPath),
     phrase_from_file(seq(Html), InputPath),
-    body_content(Html, Body),
-    page(Body, Page, []),
+    html_site_page(Html, Page),
     write_file(OutputPath, Page).
 
-path_join(Dir, File, Path) :-
-    append(Dir, "/", Prefix),
-    append(Prefix, File, Path).
+directory_file_path(Directory, File, Path) :-
+    phrase(directory_file_path_(Directory, File), Path).
 
-body_content(Html, Body) :-
-    split_after("<body>", Html, AfterBody),
-    split_before("</body>", AfterBody, Body0),
-    trim_blank_edges(Body0, Body),
-    !.
-body_content(Html, Html).
+directory_file_path_(Directory, File) -->
+    seq(Directory),
+    "/",
+    seq(File).
 
-split_after(Needle, Haystack, After) :-
-    append(_, Rest, Haystack),
-    append(Needle, After, Rest).
+html_site_page(Html, Page) :-
+    phrase(html_body(Body), Html),
+    phrase(site_page(Body), Page).
 
-split_before(Needle, Haystack, Before) :-
-    append(Before, Rest, Haystack),
-    append(Needle, _, Rest).
+html_body(Body) -->
+    any_chars,
+    "<body>",
+    body_chars(Body),
+    "</body>",
+    any_chars.
 
-trim_blank_edges(In, Out) :-
-    trim_left(In, Left),
-    reverse(Left, Rev),
-    trim_left(Rev, TrimmedRev),
-    reverse(TrimmedRev, Out).
+any_chars --> [].
+any_chars --> [_], any_chars.
 
-trim_left([C|Cs], Out) :-
-    blank(C),
-    !,
-    trim_left(Cs, Out).
-trim_left(Cs, Cs).
+body_chars([]) --> [].
+body_chars([C|Cs]) --> [C], body_chars(Cs).
 
-blank(' ').
-blank('\n').
-blank('\r').
-blank('\t').
-
-page(Body) -->
+site_page(Body) -->
     "<!doctype html>\n",
     "<html lang=\"en\">\n",
     "  <head>\n",
