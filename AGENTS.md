@@ -11,3 +11,5 @@
 - Avoid JavaScript unless unavoidable.
 - Prefer explicit Typst semantics over directory magic.
 - Add dependencies only when clearly justified.
+- Create a GitHub branch per issue before implementation.
+- Interact with GitHub using the connector.
