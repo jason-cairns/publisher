@@ -5,25 +5,23 @@
 :- initialization(main).
 
 main :-
-    argv([InputDir, OutputDir]),
-    transform(InputDir, OutputDir),
+    argv(Args),
+    main_args(Args).
+
+main_args([InputDir, OutputDir]) :-
+    directory_html_file_site_file(InputDir, OutputDir),
     halt.
-main :-
-    argv([_, _]),
-    write("site transform failed"),
-    nl,
-    halt(1).
-main :-
+main_args(_) :-
     write("usage: scryer-prolog site.pl -- INPUT_DIR OUTPUT_DIR"),
     nl,
     halt(1).
 
-transform(InputDir, OutputDir) :-
+directory_html_file_site_file(InputDir, OutputDir) :-
     directory_file_path(InputDir, "index.html", InputPath),
     directory_file_path(OutputDir, "index.html", OutputPath),
     phrase_from_file(seq(Html), InputPath),
     html_site_page(Html, Page),
-    write_file(OutputPath, Page).
+    file_chars(OutputPath, Page).
 
 directory_file_path(Directory, File, Path) :-
     phrase(directory_file_path_(Directory, File), Path).
@@ -66,12 +64,12 @@ site_page(Body) -->
     "  </body>\n",
     "</html>\n".
 
-write_file(Path, Chars) :-
+file_chars(Path, Chars) :-
     open(Path, write, Stream),
-    write_chars(Stream, Chars),
+    stream_chars(Stream, Chars),
     close(Stream).
 
-write_chars(_, []).
-write_chars(Stream, [C|Cs]) :-
+stream_chars(_, []).
+stream_chars(Stream, [C|Cs]) :-
     put_char(Stream, C),
-    write_chars(Stream, Cs).
+    stream_chars(Stream, Cs).
