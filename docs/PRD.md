@@ -1,186 +1,110 @@
-# cair.nz — Product Requirements Document
+# cair.nz PRD
 
-## Vision
+## Problem Statement
 
-Build a static publishing system where Typst is the canonical authoring environment and source of truth.
+Jason wants `cair.nz` to be a personal static site authored primarily in Typst. The same source material should publish as semantic static HTML and as a unified PDF. The system should stay aggressively small, plain-text-oriented, JavaScript-free by default, and easy to reason about.
 
-The system produces:
-- semantic static HTML pages
-- a unified PDF spanning the entire site
+The immediate problem is to prove the publishing primitive before style, recommendations, thesis migration, or other richer sections: standalone Typst publications must compile independently, become routable HTML pages, participate in a unified PDF, and belong to an explicit Typst-authored ownership tree.
 
-The architecture is intentionally minimal:
-- Typst owns document semantics and rendering
-- Scryer Prolog owns HTML post-processing and site composition
-- Make orchestrates the build
-- no JS
-- no YAML/config metadata layer
-- no frontend framework
-- no database
-- no AST parsing of Typst
+## Solution
 
-## Core Principles
+Build a minimal static publishing pipeline:
 
-1. Typst is canonical.
-2. HTML is an intermediate artifact.
-3. Typst-authored ownership defines publication structure.
-4. Every routable page is a standalone publication.
-5. Metadata is derived, not declared.
-6. Navigation is explicitly declared in Typst.
-7. JavaScript-free by default.
-8. Keep the implementation aggressively small.
+1. Typst compiles standalone publications to intermediate HTML.
+2. Typst compiles the site to a unified PDF.
+3. Scryer Prolog transforms intermediate HTML into final site HTML.
 
-## Publication Model
+Publications are discovered from explicit Typst ownership edges. The root publication owns child publications through `#nav` and `#publish`. Filesystem paths map owned publications to routes, but they do not decide whether a file is published. The root publication's `#nav` entries define the main navigation. Publication titles derive from the first level-1 heading in generated HTML.
 
-A publication is:
-- a `.typ` file reachable from the root publication through ownership edges
-- independently compilable
-- routable
-- included in the unified PDF
+The Prolog transformer accepts input and output directories at runtime. It does not parse Typst source.
 
-Titles derive from the first level-1 Typst heading.
+## User Stories
 
-Routes derive from source paths, but source paths do not decide whether a file is published.
+1. As Jason, I want to author the site in Typst, so that HTML and PDF share a source of truth.
+2. As Jason, I want each routable page to be a standalone Typst publication, so that pages remain independently understandable.
+3. As Jason, I want Typst to produce intermediate HTML, so that the project does not need a custom renderer.
+4. As Jason, I want Scryer Prolog to transform generated HTML, so that the site assembler stays small and testable.
+5. As Jason, I want Prolog to accept input and output directories, so that it is not tied to one repository layout.
+6. As Jason, I want Typst-authored ownership edges to define publication structure, so that ownership is explicit without a metadata registry.
+7. As Jason, I want filesystem paths to map owned publications to routes, so that there is no route registry.
+8. As Jason, I want root `#nav` declarations to form the main nav, so that navigation is explicit in Typst.
+9. As Jason, I want titles derived from first level-1 headings, so that metadata stays in normal Typst.
+10. As Jason, I want underscore Typst files to be helpers, so that shared functions do not become pages.
+11. As Jason, I want internal publication links, so that links resolve correctly in HTML and PDF.
+12. As Jason, I want deep anchors deferred, so that the first slice stays narrow.
+13. As Jason, I want semantic HTML, so that the site remains accessible and inspectable.
+14. As Jason, I want a unified PDF, so that the whole site can be read as one document.
+15. As Jason, I want automated tests from the beginning, so that every module is safe to change.
+16. As Jason, I want GitHub Pages deployment, so that successful builds publish automatically.
 
-Examples:
+## Implementation Decisions
 
-- `about.typ` -> `/about/`
-- `writing.typ` -> `/writing/`
-- `thesis/ch1.typ` -> `/thesis/ch1/`
+- Typst is canonical.
+- Typst-generated HTML is intermediate.
+- Scryer Prolog transforms HTML only.
+- Prolog must not parse Typst source.
+- Prolog must accept input and output directories at runtime.
+- Typst-authored ownership defines publications.
+- Filesystem paths map owned publications to routes.
+- Non-underscore Typst documents are publication candidates and must be reachable from the root ownership tree.
+- Underscore Typst documents are helpers.
+- Publications compile independently.
+- Root `#nav` declarations become main navigation.
+- `#publish` creates publication ownership without a visible nav item.
+- publication links are references only.
+- Titles derive from first level-1 headings in generated HTML.
+- Slice 1 supports publication-level links only.
+- JavaScript, YAML, frontmatter, route registries, and frameworks are out by default.
 
-Publication structure is a rooted ordered ownership tree:
+Deep modules:
 
-- `#nav(target)[Label]` creates an ownership edge and a visible ordered navigation item.
-- `#publish(target)` creates an ownership edge without adding a visible navigation item.
-- publication links are references only; they do not create ownership and do not publish files implicitly.
+- Ownership graph discovery.
+- Ownership graph validation.
+- Route resolution.
+- Navigation synthesis.
+- Link rewriting.
+- HTML transformation.
+- PDF assembly.
+- Build orchestration.
+- Test harness.
 
-The ownership graph must be acyclic. Every published page except the root must have exactly one owner.
+Each module must include automated tests when created.
 
-## Build Pipeline
+## Testing Decisions
 
-```text
-.typ
-  -> typst html
-  -> prolog transform
-  -> final site html
-```
+Tests should verify external behavior, not implementation details.
 
-Typst phase responsibilities:
-- HTML generation
-- PDF generation
-- headings/anchors
-- document semantics
+Required coverage:
 
-Prolog phase responsibilities:
-- route mapping for the owned publication set
+- ownership graph discovery
 - ownership graph validation
-- nav synthesis from explicit Typst markers
+- route derivation
+- navigation generation
 - link rewriting
-- HTML normalization
-- site chrome injection
-
-## Navigation
-
-The root publication's `#nav` entries become the main navigation.
-
-Nested publications can declare their own `#nav` entries. Those entries create section navigation inherited by pages reached through that navigation edge.
-
-`#publish` creates publication ownership without adding a visible nav item.
-
-Ordinary publication links do not create ownership and do not affect inherited navigation context.
-
-## Linking
-
-Slice 1 supports publication-level links only.
-
-Example:
-
-```typst
-#publication-link("about.typ")[About]
-```
-
-Behavior:
-- HTML -> `/about/`
-- PDF -> anchor inside unified PDF
-- target must already be in the published ownership tree
-
-Deep anchor linking is deferred.
-
-## Repository Shape
-
-```text
-.
-├── Makefile
-├── site.pl
-├── src/
-├── build/
-├── public/
-├── test/
-└── .github/workflows/
-```
-
-Rules:
-- `_*.typ` are helper/import-only files
-- non-helper `.typ` files must be reachable from the root ownership tree or the build fails
-- filesystem structure maps routes but does not discover publications
-
-## Testing
-
-Test coverage should include:
-- HTML generation
-- PDF generation
-- route correctness
-- nav generation
-- ownership graph validation
-- link rewriting
+- HTML transformation
+- unified PDF artifact creation
+- build orchestration
 - broken local link detection
-- golden HTML snapshots
-- Prolog unit tests
+- golden output snapshots
 
-## Deployment
+The Prolog transformer should be testable without invoking Typst by using HTML fixtures.
 
-GitHub Actions should:
-1. build HTML/PDF
-2. run tests
-3. deploy `public/` to GitHub Pages
+## Out of Scope
 
-## Deferred Work
+Out of scope for the first implementation slice:
 
-Deferred intentionally:
-- deep anchors
+- visual style system
+- deep cross-document anchors
 - thesis migration tooling
-- recommendation APIs/cache
-- styling system
-- JS interactivity
-- Typst AST parsing
-- Nix integration
+- recommendations metadata fetching
+- mood board behavior
+- recipes implementation
+- CV styling polish
+- JavaScript interactivity
+- Typst source parsing
+- Nix or direnv integration
+- recursive publication semantics
 
-## Initial Vertical Slices
+## Further Notes
 
-### Slice 1
-
-Minimal publishing primitive:
-- standalone publications
-- HTML generation
-- unified PDF
-- Prolog transform
-- explicit Typst-authored ownership graph
-- nav synthesis from `#nav`
-- publication-level links
-- tests
-- GitHub Pages deployment
-
-### Slice 2
-
-Deep-link support.
-
-### Slice 3
-
-Thesis migration prototype.
-
-### Slice 4
-
-Recommendations engine.
-
-### Slice 5
-
-Styling system.
+The first implementation should be a tracer bullet through the whole publishing system, not a horizontal infrastructure layer. Keep the output visually plain until the semantic pipeline is correct.
