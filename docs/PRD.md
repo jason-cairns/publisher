@@ -46,8 +46,8 @@ The Prolog transformer accepts input and output directories at runtime. It does 
 - Prolog must accept input and output directories at runtime.
 - Typst-authored ownership defines publications.
 - Filesystem paths map owned publications to routes.
-- Non-underscore Typst documents are publication candidates and must be reachable from the root ownership tree.
-- Underscore Typst documents are helpers.
+- The ownership tree defines the rendered set: candidates reachable from the root via ownership edges become publications. Candidates outside the tree are dropped silently and produce no build error (ADR 0006).
+- Underscore Typst documents are helpers by convention; the build skips them at discovery, but the convention is not load-bearing.
 - Publications compile independently.
 - Root `#nav` declarations become main navigation.
 - `#publish` creates publication ownership without a visible nav item.

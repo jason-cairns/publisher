@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Accepted. The "unreachable non-helper Typst files become build errors"
+consequence below is superseded by ADR 0006: unreachable candidates are
+dropped silently.
 
 ## Context
 
