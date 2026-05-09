@@ -33,13 +33,16 @@ site(SrcDir, HtmlDir, OutputDir, RootSource, Sources) :-
     source_member(RootSource, Sources),
     sources_documents(HtmlDir, Sources, Documents),
     documents_edges(Documents, OwnershipEdges, ReferenceEdges),
-    edges_targets_present(OwnershipEdges, Sources),
-    edges_targets_present(ReferenceEdges, Sources),
-    all_reachable(Sources, RootSource, OwnershipEdges),
-    root_not_owned(RootSource, OwnershipEdges),
-    unique_owned_targets(OwnershipEdges),
-    valid_owners(Sources, RootSource, OwnershipEdges),
-    documents_site_files(SrcDir, OutputDir, Documents, OwnershipEdges, RootSource).
+    rendered_set(RootSource, Sources, OwnershipEdges, Rendered),
+    documents_in(Rendered, Documents, RenderedDocuments),
+    own_edges_from(OwnershipEdges, Rendered, RenderedOwnership),
+    ref_edges_from(ReferenceEdges, Rendered, RenderedReferences),
+    edges_targets_present(RenderedOwnership, Rendered),
+    edges_targets_present(RenderedReferences, Rendered),
+    root_not_owned(RootSource, RenderedOwnership),
+    unique_owned_targets(RenderedOwnership),
+    valid_owners(Rendered, RootSource, RenderedOwnership),
+    documents_site_files(SrcDir, OutputDir, RenderedDocuments, RenderedOwnership, RootSource).
 
 sources_documents(_, [], []).
 sources_documents(HtmlDir, [Source|Sources], [document(Source, Body, Edges)|Documents]) :-
@@ -72,10 +75,58 @@ edges_targets_present([refers(_, Target, _)|Edges], Sources) :-
     source_member(Target, Sources),
     edges_targets_present(Edges, Sources).
 
-all_reachable([], _, _).
-all_reachable([Source|Sources], RootSource, OwnershipEdges) :-
-    ownership_path(RootSource, Source, OwnershipEdges, _),
-    all_reachable(Sources, RootSource, OwnershipEdges).
+rendered_set(RootSource, Sources, OwnershipEdges, Rendered) :-
+    rendered_closure([RootSource], OwnershipEdges, Sources, [RootSource], Rendered).
+
+rendered_closure([], _, _, Rendered, Rendered).
+rendered_closure([Source|Queue], OwnershipEdges, Sources, Acc, Rendered) :-
+    children_in_sources(Source, OwnershipEdges, Sources, Children),
+    add_new_members(Children, Acc, NewMembers, AccUpdated),
+    append(Queue, NewMembers, QueueUpdated),
+    rendered_closure(QueueUpdated, OwnershipEdges, Sources, AccUpdated, Rendered).
+
+children_in_sources(_, [], _, []).
+children_in_sources(Source, [owns(Source, Child, _, _)|Edges], Sources, [Child|Children]) :-
+    source_member(Child, Sources),
+    children_in_sources(Source, Edges, Sources, Children).
+children_in_sources(Source, [owns(Source, Child, _, _)|Edges], Sources, Children) :-
+    source_not_member(Child, Sources),
+    children_in_sources(Source, Edges, Sources, Children).
+children_in_sources(Source, [owns(Other, _, _, _)|Edges], Sources, Children) :-
+    dif(Source, Other),
+    children_in_sources(Source, Edges, Sources, Children).
+
+add_new_members([], Acc, [], Acc).
+add_new_members([X|Xs], Acc, [X|New], FinalAcc) :-
+    source_not_member(X, Acc),
+    add_new_members(Xs, [X|Acc], New, FinalAcc).
+add_new_members([X|Xs], Acc, New, FinalAcc) :-
+    source_member(X, Acc),
+    add_new_members(Xs, Acc, New, FinalAcc).
+
+documents_in(_, [], []).
+documents_in(Rendered, [document(Source, Body, Edges)|Documents], [document(Source, Body, Edges)|Filtered]) :-
+    source_member(Source, Rendered),
+    documents_in(Rendered, Documents, Filtered).
+documents_in(Rendered, [document(Source, _, _)|Documents], Filtered) :-
+    source_not_member(Source, Rendered),
+    documents_in(Rendered, Documents, Filtered).
+
+own_edges_from([], _, []).
+own_edges_from([owns(Owner, Target, Kind, Label)|Edges], Rendered, [owns(Owner, Target, Kind, Label)|Within]) :-
+    source_member(Owner, Rendered),
+    own_edges_from(Edges, Rendered, Within).
+own_edges_from([owns(Owner, _, _, _)|Edges], Rendered, Within) :-
+    source_not_member(Owner, Rendered),
+    own_edges_from(Edges, Rendered, Within).
+
+ref_edges_from([], _, []).
+ref_edges_from([refers(Source, Target, Label)|Edges], Rendered, [refers(Source, Target, Label)|Within]) :-
+    source_member(Source, Rendered),
+    ref_edges_from(Edges, Rendered, Within).
+ref_edges_from([refers(Source, _, _)|Edges], Rendered, Within) :-
+    source_not_member(Source, Rendered),
+    ref_edges_from(Edges, Rendered, Within).
 
 valid_owners([], _, _).
 valid_owners([Source|Sources], RootSource, OwnershipEdges) :-
@@ -288,35 +339,20 @@ non_marker_char(C) -->
     { dif(C, '<') }.
 non_marker_char('<') -->
     "<",
-    not_cairnz_prefix.
+    not_marker_prefix.
 
-not_cairnz_prefix -->
+% Commit point: at "<cairnz-" the parser MUST match a marker, not
+% character-eat the prefix. Without this, html_edges//1 is
+% non-deterministic and validation can be bypassed by backtracking into
+% an alternative parse where a marker was never extracted.
+not_marker_prefix --> not_marker_prefix_after("cairnz-").
+
+not_marker_prefix_after([Expected|_]) -->
     [C],
-    { dif(C, 'c') }.
-not_cairnz_prefix -->
-    "c",
-    [C],
-    { dif(C, 'a') }.
-not_cairnz_prefix -->
-    "ca",
-    [C],
-    { dif(C, 'i') }.
-not_cairnz_prefix -->
-    "cai",
-    [C],
-    { dif(C, 'r') }.
-not_cairnz_prefix -->
-    "cair",
-    [C],
-    { dif(C, 'n') }.
-not_cairnz_prefix -->
-    "cairn",
-    [C],
-    { dif(C, 'z') }.
-not_cairnz_prefix -->
-    "cairnz",
-    [C],
-    { dif(C, '-') }.
+    { dif(C, Expected) }.
+not_marker_prefix_after([Expected|Rest]) -->
+    [Expected],
+    not_marker_prefix_after(Rest).
 
 any_chars --> [].
 any_chars --> [_], any_chars.
@@ -328,6 +364,11 @@ source_member(Source, [Source|_]).
 source_member(Source, [Other|Sources]) :-
     dif(Source, Other),
     source_member(Source, Sources).
+
+source_not_member(_, []).
+source_not_member(Source, [Other|Sources]) :-
+    dif(Source, Other),
+    source_not_member(Source, Sources).
 
 source_html_file(HtmlDir, Source, Path) :-
     source_stem(Source, Stem),
