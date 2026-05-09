@@ -19,7 +19,7 @@ $(INTERMEDIATE_DIR)/.stamp: $(PUBLICATION_TYP_FILES) $(SRC_DIR)/_publication.typ
 	set -eu; for src in $(PUBLICATION_SOURCES); do \
 		out="$(INTERMEDIATE_DIR)/$${src%.typ}.html"; \
 		mkdir -p "$$(dirname "$$out")"; \
-		$(TYPST) compile --features html --root $(SRC_DIR) "$(SRC_DIR)/$$src" "$$out"; \
+		$(TYPST) compile --features html --input render-target=html --root $(SRC_DIR) "$(SRC_DIR)/$$src" "$$out"; \
 	done
 	touch $@
 
@@ -35,7 +35,7 @@ $(PUBLIC_DIR)/.stamp: $(INTERMEDIATE_DIR)/.stamp site.pl
 
 $(PUBLIC_DIR)/site.pdf: $(SRC_DIR)/_site.typ $(PUBLICATION_TYP_FILES) $(SRC_DIR)/_publication.typ
 	mkdir -p $(PUBLIC_DIR)
-	$(TYPST) compile --features html --root $(SRC_DIR) $(SRC_DIR)/_site.typ $@
+	$(TYPST) compile --root $(SRC_DIR) $(SRC_DIR)/_site.typ $@
 
 test: build
 	./test/build.sh

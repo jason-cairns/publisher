@@ -35,6 +35,9 @@ if grep -qi '<script' public/index.html; then
   exit 1
 fi
 
+mkdir -p build/test-preview
+typst compile --root src src/index.typ build/test-preview/index.pdf
+
 tmp="build/test-ownership"
 rm -rf "$tmp"
 mkdir -p "$tmp/unreachable/html" "$tmp/unreachable/public/orphan"
