@@ -4,7 +4,7 @@
 
 Jason wants `cair.nz` to be a personal static site authored primarily in Typst. The same source material should publish as semantic static HTML and as a unified PDF. The system should stay aggressively small, plain-text-oriented, JavaScript-free by default, and easy to reason about.
 
-The immediate problem is to prove the publishing primitive before style, recommendations, thesis migration, or other richer sections: standalone Typst publications must compile independently, become routable HTML pages, participate in a unified PDF, and link to each other at publication level.
+The immediate problem is to prove the publishing primitive before style, recommendations, thesis migration, or other richer sections: standalone Typst publications must compile independently, become routable HTML pages, participate in a unified PDF, and belong to an explicit Typst-authored ownership tree.
 
 ## Solution
 
@@ -14,7 +14,7 @@ Build a minimal static publishing pipeline:
 2. Typst compiles the site to a unified PDF.
 3. Scryer Prolog transforms intermediate HTML into final site HTML.
 
-Publications are discovered from the filesystem. Every non-underscore Typst document is a publication. Filesystem paths define routes. Top-level publications define the main navigation. Publication titles derive from the first level-1 heading in generated HTML.
+Publications are discovered from explicit Typst ownership edges. The root publication owns child publications through `#nav` and `#publish`. Filesystem paths map owned publications to routes, but they do not decide whether a file is published. The root publication's `#nav` entries define the main navigation. Publication titles derive from the first level-1 heading in generated HTML.
 
 The Prolog transformer accepts input and output directories at runtime. It does not parse Typst source.
 
@@ -25,9 +25,9 @@ The Prolog transformer accepts input and output directories at runtime. It does 
 3. As Jason, I want Typst to produce intermediate HTML, so that the project does not need a custom renderer.
 4. As Jason, I want Scryer Prolog to transform generated HTML, so that the site assembler stays small and testable.
 5. As Jason, I want Prolog to accept input and output directories, so that it is not tied to one repository layout.
-6. As Jason, I want filesystem paths to define routes, so that there is no route registry.
-7. As Jason, I want top-level publications to form the main nav, so that navigation follows the visible site shape.
-8. As Jason, I want subdirectory publications omitted from global nav, so that chapters and entries do not flood it.
+6. As Jason, I want Typst-authored ownership edges to define publication structure, so that ownership is explicit without a metadata registry.
+7. As Jason, I want filesystem paths to map owned publications to routes, so that there is no route registry.
+8. As Jason, I want root `#nav` declarations to form the main nav, so that navigation is explicit in Typst.
 9. As Jason, I want titles derived from first level-1 headings, so that metadata stays in normal Typst.
 10. As Jason, I want underscore Typst files to be helpers, so that shared functions do not become pages.
 11. As Jason, I want internal publication links, so that links resolve correctly in HTML and PDF.
@@ -44,18 +44,22 @@ The Prolog transformer accepts input and output directories at runtime. It does 
 - Scryer Prolog transforms HTML only.
 - Prolog must not parse Typst source.
 - Prolog must accept input and output directories at runtime.
-- Filesystem structure defines publications and routes.
-- Non-underscore Typst documents are publications.
+- Typst-authored ownership defines publications.
+- Filesystem paths map owned publications to routes.
+- Non-underscore Typst documents are publication candidates and must be reachable from the root ownership tree.
 - Underscore Typst documents are helpers.
 - Publications compile independently.
-- Top-level publications become main navigation.
+- Root `#nav` declarations become main navigation.
+- `#publish` creates publication ownership without a visible nav item.
+- publication links are references only.
 - Titles derive from first level-1 headings in generated HTML.
 - Slice 1 supports publication-level links only.
 - JavaScript, YAML, frontmatter, route registries, and frameworks are out by default.
 
 Deep modules:
 
-- Publication discovery.
+- Ownership graph discovery.
+- Ownership graph validation.
 - Route resolution.
 - Navigation synthesis.
 - Link rewriting.
@@ -72,7 +76,8 @@ Tests should verify external behavior, not implementation details.
 
 Required coverage:
 
-- publication discovery
+- ownership graph discovery
+- ownership graph validation
 - route derivation
 - navigation generation
 - link rewriting

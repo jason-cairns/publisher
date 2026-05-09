@@ -30,6 +30,8 @@ No recursive publication semantics are introduced.
 
 Cross-publication relationships are expressed through links only.
 
+Publication ownership is expressed separately through explicit Typst ownership edges defined in ADR 0005.
+
 ## Consequences
 
 Positive:

@@ -22,30 +22,38 @@ The architecture is intentionally minimal:
 
 1. Typst is canonical.
 2. HTML is an intermediate artifact.
-3. Filesystem structure is publication structure.
+3. Typst-authored ownership defines publication structure.
 4. Every routable page is a standalone publication.
 5. Metadata is derived, not declared.
-6. Navigation is filesystem-derived.
+6. Navigation is explicitly declared in Typst.
 7. JavaScript-free by default.
 8. Keep the implementation aggressively small.
 
 ## Publication Model
 
 A publication is:
-- a non-underscore `.typ` file
+- a `.typ` file reachable from the root publication through ownership edges
 - independently compilable
 - routable
 - included in the unified PDF
 
 Titles derive from the first level-1 Typst heading.
 
-Routes derive from filesystem paths.
+Routes derive from source paths, but source paths do not decide whether a file is published.
 
 Examples:
 
 - `about.typ` -> `/about/`
 - `writing.typ` -> `/writing/`
 - `thesis/ch1.typ` -> `/thesis/ch1/`
+
+Publication structure is a rooted ordered ownership tree:
+
+- `#nav(target)[Label]` creates an ownership edge and a visible ordered navigation item.
+- `#publish(target)` creates an ownership edge without adding a visible navigation item.
+- publication links are references only; they do not create ownership and do not publish files implicitly.
+
+The ownership graph must be acyclic. Every published page except the root must have exactly one owner.
 
 ## Build Pipeline
 
@@ -63,19 +71,22 @@ Typst phase responsibilities:
 - document semantics
 
 Prolog phase responsibilities:
-- route derivation
-- nav synthesis
+- route mapping for the owned publication set
+- ownership graph validation
+- nav synthesis from explicit Typst markers
 - link rewriting
 - HTML normalization
 - site chrome injection
 
 ## Navigation
 
-Top-level `.typ` files become the main navigation.
+The root publication's `#nav` entries become the main navigation.
 
-Subdirectory publications are linked explicitly by parent publications.
+Nested publications can declare their own `#nav` entries. Those entries create section navigation inherited by pages reached through that navigation edge.
 
-No recursive publication semantics.
+`#publish` creates publication ownership without adding a visible nav item.
+
+Ordinary publication links do not create ownership and do not affect inherited navigation context.
 
 ## Linking
 
@@ -84,12 +95,13 @@ Slice 1 supports publication-level links only.
 Example:
 
 ```typst
-#page("about.typ")[About]
+#publication-link("about.typ")[About]
 ```
 
 Behavior:
 - HTML -> `/about/`
 - PDF -> anchor inside unified PDF
+- target must already be in the published ownership tree
 
 Deep anchor linking is deferred.
 
@@ -108,7 +120,8 @@ Deep anchor linking is deferred.
 
 Rules:
 - `_*.typ` are helper/import-only files
-- all other `.typ` files are publications
+- non-helper `.typ` files must be reachable from the root ownership tree or the build fails
+- filesystem structure maps routes but does not discover publications
 
 ## Testing
 
@@ -117,6 +130,7 @@ Test coverage should include:
 - PDF generation
 - route correctness
 - nav generation
+- ownership graph validation
 - link rewriting
 - broken local link detection
 - golden HTML snapshots
@@ -149,7 +163,8 @@ Minimal publishing primitive:
 - HTML generation
 - unified PDF
 - Prolog transform
-- nav synthesis
+- explicit Typst-authored ownership graph
+- nav synthesis from `#nav`
 - publication-level links
 - tests
 - GitHub Pages deployment

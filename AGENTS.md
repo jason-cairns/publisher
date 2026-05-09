@@ -4,7 +4,8 @@
 - Typst is the source of truth.
 - Never parse Typst source in Prolog.
 - HTML is an intermediate artifact.
-- Filesystem structure defines routing.
+- Typst-authored ownership defines publication structure.
+- Filesystem paths map owned publications to routes.
 - Every publication compiles independently.
 - No YAML/frontmatter/config metadata layer.
 - Prefer plain text and semantic HTML.

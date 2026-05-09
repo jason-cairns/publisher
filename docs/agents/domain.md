@@ -30,5 +30,6 @@ Use this repo's existing terms when writing issues, tests, docs, or code comment
 
 - Typst is the source of truth.
 - HTML is an intermediate artifact.
-- Filesystem structure defines routing.
+- Typst-authored ownership defines publication structure.
+- Filesystem paths map owned publications to routes.
 - Each publication compiles independently.
