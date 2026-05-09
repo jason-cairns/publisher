@@ -36,7 +36,7 @@ if grep -qi '<script' public/index.html; then
 fi
 
 mkdir -p build/test-preview
-typst compile --root src src/index.typ build/test-preview/index.pdf
+${TYPST:?TYPST is required} compile --root src src/index.typ build/test-preview/index.pdf
 
 tmp="build/test-ownership"
 rm -rf "$tmp"

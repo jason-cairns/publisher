@@ -9,6 +9,8 @@ ROOT_SOURCE := index.typ
 PUBLICATION_TYP_FILES := $(shell find $(SRC_DIR) -name '*.typ' ! -name '_*' -print | sort)
 PUBLICATION_SOURCES := $(patsubst $(SRC_DIR)/%,%,$(PUBLICATION_TYP_FILES))
 
+export TYPST
+
 .PHONY: build clean test
 
 build: $(PUBLIC_DIR)/.stamp $(PUBLIC_DIR)/site.pdf
