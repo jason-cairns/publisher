@@ -28,3 +28,17 @@ Don't:
   - Use `is/2` for arithmetic
   - Encode control flow manually
   - assert/retract for mutable state
+
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs are tracked in GitHub Issues for `jason-cairns/my-site` using the inbuilt GitHub connector. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Use the default five-label triage vocabulary. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context repo: read `docs/PRD.md` and relevant ADRs under `docs/adr/`; suggest adding `CONTEXT.md` once context grows too large for the PRD/ADR setup. See `docs/agents/domain.md`.
