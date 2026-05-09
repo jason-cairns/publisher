@@ -116,10 +116,10 @@ documents_site_files(_, OutputDir, Documents, OwnershipEdges, RootSource) :-
 documents_site_files_(_, [], _, _, _).
 documents_site_files_(OutputDir, [document(Source, Body, _)|Documents], AllDocuments, OwnershipEdges, RootSource) :-
     ownership_path(RootSource, Source, OwnershipEdges, Path),
-    nav_bars(Path, AllDocuments, NavBars),
-    final_body(Body, CleanBody),
-    site_page(Source, NavBars, CleanBody, Page),
-    source_public_file(OutputDir, Source, OutputPath),
+    nav_bars(RootSource, Path, AllDocuments, NavBars),
+    final_body(RootSource, Body, CleanBody),
+    site_page(RootSource, Source, NavBars, CleanBody, Page),
+    source_public_file(OutputDir, RootSource, Source, OutputPath),
     file_chars(OutputPath, Page),
     documents_site_files_(OutputDir, Documents, AllDocuments, OwnershipEdges, RootSource).
 
@@ -136,14 +136,14 @@ owns_child(Source, Target, [owns(Source, Other, _, _)|Edges]) :-
     dif(Target, Other),
     owns_child(Source, Target, Edges).
 
-nav_bars([], _, []).
-nav_bars([Source|Sources], Documents, NavBars) :-
+nav_bars(_, [], _, []).
+nav_bars(RootSource, [Source|Sources], Documents, NavBars) :-
     document_nav_entries(Documents, Source, []),
-    nav_bars(Sources, Documents, NavBars).
-nav_bars([Source|Sources], Documents, [NavBar|NavBars]) :-
+    nav_bars(RootSource, Sources, Documents, NavBars).
+nav_bars(RootSource, [Source|Sources], Documents, [NavBar|NavBars]) :-
     document_nav_entries(Documents, Source, [Entry|Entries]),
-    phrase(nav_bar([Entry|Entries]), NavBar),
-    nav_bars(Sources, Documents, NavBars).
+    phrase(nav_bar(RootSource, [Entry|Entries]), NavBar),
+    nav_bars(RootSource, Sources, Documents, NavBars).
 
 document_nav_entries([document(Source, _, Edges)|_], Source, Entries) :-
     nav_entries(Edges, Entries).
@@ -159,45 +159,45 @@ nav_entries([edge(publish, _, _)|Edges], Entries) :-
 nav_entries([edge(link, _, _)|Edges], Entries) :-
     nav_entries(Edges, Entries).
 
-nav_bar(Entries) -->
+nav_bar(RootSource, Entries) -->
     "    <nav>\n",
     "      <ul>\n",
-    nav_items(Entries),
+    nav_items(RootSource, Entries),
     "      </ul>\n",
     "    </nav>\n".
 
-nav_items([]) --> [].
-nav_items([nav_entry(Target, Label)|Entries]) -->
+nav_items(_, []) --> [].
+nav_items(RootSource, [nav_entry(Target, Label)|Entries]) -->
     "        <li><a href=\"",
-    route_href(Target),
+    route_href(RootSource, Target),
     "\">",
     seq(Label),
     "</a></li>\n",
-    nav_items(Entries).
+    nav_items(RootSource, Entries).
 
-final_body(Body, CleanBody) :-
-    phrase(clean_body(CleanBody), Body).
+final_body(RootSource, Body, CleanBody) :-
+    phrase(clean_body(RootSource, CleanBody), Body).
 
-clean_body([]) --> [].
-clean_body(CleanBody) -->
+clean_body(_, []) --> [].
+clean_body(RootSource, CleanBody) -->
     nav_marker(_Target, _Label),
-    clean_body(CleanBody).
-clean_body(CleanBody) -->
+    clean_body(RootSource, CleanBody).
+clean_body(RootSource, CleanBody) -->
     publish_marker(_Target),
-    clean_body(CleanBody).
-clean_body(CleanBody) -->
+    clean_body(RootSource, CleanBody).
+clean_body(RootSource, CleanBody) -->
     link_marker(Target, Label),
-    { phrase(publication_anchor(Target, Label), Anchor) },
-    clean_body(Rest),
+    { phrase(publication_anchor(RootSource, Target, Label), Anchor) },
+    clean_body(RootSource, Rest),
     { append(Anchor, Rest, CleanBody) }.
-clean_body([C|Cs]) -->
+clean_body(RootSource, [C|Cs]) -->
     [C],
-    clean_body(Cs).
+    clean_body(RootSource, Cs).
 
-site_page(Source, NavBars, Body, Page) :-
-    phrase(site_page_(Source, NavBars, Body), Page).
+site_page(RootSource, Source, NavBars, Body, Page) :-
+    phrase(site_page_(RootSource, Source, NavBars, Body), Page).
 
-site_page_(Source, NavBars, Body) -->
+site_page_(RootSource, Source, NavBars, Body) -->
     "<!doctype html>\n",
     "<html lang=\"en\">\n",
     "  <head>\n",
@@ -208,7 +208,9 @@ site_page_(Source, NavBars, Body) -->
     " - cair.nz</title>\n",
     "  </head>\n",
     "  <body>\n",
-    "    <header><a href=\"/\">cair.nz</a></header>\n",
+    "    <header><a href=\"",
+    route_href(RootSource, RootSource),
+    "\">cair.nz</a></header>\n",
     nav_bar_blocks(NavBars),
     "    <main>\n",
     Body,
@@ -221,9 +223,9 @@ nav_bar_blocks([NavBar|NavBars]) -->
     seq(NavBar),
     nav_bar_blocks(NavBars).
 
-publication_anchor(Target, Label) -->
+publication_anchor(RootSource, Target, Label) -->
     "<a href=\"",
-    route_href(Target),
+    route_href(RootSource, Target),
     "\">",
     seq(Label),
     "</a>".
@@ -331,16 +333,16 @@ source_html_file(HtmlDir, Source, Path) :-
     source_stem(Source, Stem),
     phrase(path_file(HtmlDir, Stem, ".html"), Path).
 
-source_public_file(OutputDir, "index.typ", Path) :-
+source_public_file(OutputDir, RootSource, RootSource, Path) :-
     phrase(path_file(OutputDir, "index", ".html"), Path).
-source_public_file(OutputDir, Source, Path) :-
-    dif(Source, "index.typ"),
+source_public_file(OutputDir, RootSource, Source, Path) :-
+    dif(Source, RootSource),
     source_stem(Source, Stem),
     phrase(path_file(OutputDir, Stem, "/index.html"), Path).
 
-route_href("index.typ") --> "/".
-route_href(Source) -->
-    { dif(Source, "index.typ"), source_stem(Source, Stem) },
+route_href(RootSource, RootSource) --> "/".
+route_href(RootSource, Source) -->
+    { dif(Source, RootSource), source_stem(Source, Stem) },
     "/",
     seq(Stem),
     "/".

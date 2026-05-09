@@ -54,3 +54,14 @@ if scryer-prolog site.pl -- src "$tmp/multi-owner/html" "$tmp/multi-owner/public
   echo 'publications with multiple owners must fail ownership validation' >&2
   exit 1
 fi
+
+mkdir -p "$tmp/alternate-root/html" "$tmp/alternate-root/public/index"
+printf '<!DOCTYPE html><html><body><cairnz-nav data-target="index.typ">Home</cairnz-nav><p><cairnz-link data-target="index.typ">Home</cairnz-link></p></body></html>' > "$tmp/alternate-root/html/writing.html"
+printf '<!DOCTYPE html><html><body><p><cairnz-link data-target="writing.typ">Root</cairnz-link></p></body></html>' > "$tmp/alternate-root/html/index.html"
+
+scryer-prolog site.pl -- src "$tmp/alternate-root/html" "$tmp/alternate-root/public" writing.typ writing.typ index.typ
+
+test -s "$tmp/alternate-root/public/index.html"
+test -s "$tmp/alternate-root/public/index/index.html"
+grep -q '<a href="/index/">Home</a>' "$tmp/alternate-root/public/index.html"
+grep -q '<a href="/">Root</a>' "$tmp/alternate-root/public/index/index.html"
