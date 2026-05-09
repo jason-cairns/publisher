@@ -17,6 +17,7 @@ final site HTML, and compiles a unified PDF artifact.
 
 The implementation is intentionally small: no JavaScript, no YAML or
 frontmatter, no route registry, and no Prolog parsing of Typst source.
+Publication ownership is declared in Typst with `#nav` and `#publish`.
 
 Run:
 
