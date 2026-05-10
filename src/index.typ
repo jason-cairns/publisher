@@ -1,10 +1,12 @@
-#import "_publication.typ": nav, publication-link, publish
+#import "_publication.typ": entry, publication-link, publish
 
 = cair.nz
 
-#nav("writing.typ")[Writing]
+#publish("writing.typ")[Writing]
 
-#publish("colophon.typ")
+#publish("thesis.typ")[Thesis]
+
+#entry("colophon.typ")
 
 This page is a standalone Typst publication.
 

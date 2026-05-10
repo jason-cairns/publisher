@@ -10,23 +10,23 @@
   }
 }
 
-#let nav(dest, body) = context {
+#let publish(dest, body) = context {
   if html_export {
-    html.elem("cairnz-nav", attrs: ("data-target": dest), body)
+    html.elem("publication-publish", attrs: ("data-target": dest), body)
   } else {
     publication_target_link(dest, body)
   }
 }
 
-#let publish(dest) = context {
+#let entry(dest) = context {
   if html_export {
-    html.elem("cairnz-publish", attrs: ("data-target": dest))
+    html.elem("publication-entry", attrs: ("data-target": dest))
   }
 }
 
 #let publication-link(dest, body) = context {
   if html_export {
-    html.elem("cairnz-link", attrs: ("data-target": dest), body)
+    html.elem("publication-link", attrs: ("data-target": dest), body)
   } else {
     publication_target_link(dest, body)
   }

@@ -17,7 +17,7 @@ The system needs:
 - Typst as the semantic source of truth
 - no YAML, frontmatter, or route registry
 - no Typst source parsing in Prolog
-- deterministic navigation inheritance
+- deterministic publication index inheritance
 
 ## Decision
 
@@ -27,19 +27,20 @@ The site has a root publication, normally `src/index.typ`. The published set is 
 
 Typst exposes three publication relationships:
 
-- `#nav(target)[Label]` creates an ownership edge and a visible ordered navigation item.
-- `#publish(target)` creates an ownership edge without adding a visible navigation item.
+- `#publish(target)[Label]` creates an ownership edge and a visible ordered publication index item.
+- `#entry(target)` creates an ownership edge without adding a visible publication index item.
 - `#publication-link(target)[Label]` creates a reference edge only.
 
 The ownership graph has these constraints:
 
 - it must be acyclic
 - every published page except the root has exactly one owner
-- sibling navigation order follows source order
+- sibling publication index order follows source order
 - ordinary reference links may be cyclic
 - reference links must point to publications already in the ownership tree
 
-Navigation context is derived from the unique ownership path from the root to a publication.
+Publication index context is derived from the unique ownership path from the
+root to a publication.
 
 Routes still derive from source paths. Filesystem paths map owned publications to URLs, but filesystem structure does not decide whether a file is published.
 
@@ -49,7 +50,7 @@ Prolog operates only on Typst-generated HTML. Typst helpers emit semantic HTML m
 
 Positive:
 - publication structure is explicit and authored in Typst
-- navigation inheritance has a single mathematical source: the ownership path
+- publication index inheritance has a single mathematical source: the ownership path
 - ordinary links do not imply ownership
 - directories can organize source files without owning publication semantics
 - unreachable non-helper Typst files become build errors

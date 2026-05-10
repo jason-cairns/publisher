@@ -51,7 +51,7 @@ but the transformer accepts any source. The root has no owner.
 another publication.
 
 **Ownership edge** — a directed edge `(owner, target, kind, label)` where
-`kind ∈ {nav, publish}`. Authored in Typst with `#nav` or `#publish`.
+`kind ∈ {publish, entry}`. Authored in Typst with `#publish` or `#entry`.
 Emitted as a marker into intermediate HTML, then read by the transformer.
 Ownership edges define the rendered set.
 
@@ -67,15 +67,16 @@ the ownership edges restricted to `R`. Constrained to be a rooted tree
 interchangeably with **Ownership graph** in this codebase.
 
 **Ownership path** — the unique path from the root to a given publication
-in the ownership tree. Determines the publication's navigation context.
+in the ownership tree. Determines the publication's inherited publication
+index context.
 
-**Navigation entry** — a `nav` ownership edge, contributing a visible item
-to its owner's published nav bar. A `publish` edge owns without producing
-a nav entry.
+**Publication index entry** — a `publish` ownership edge, contributing a
+visible ordered item to its owner's publication index. An `entry` edge owns
+without producing an index item.
 
-**Navigation context** — the ordered list of nav bars inherited along a
-publication's ownership path. The published page renders one nav bar per
-ancestor that has nav entries.
+**Publication index context** — the ordered list of publication indexes
+inherited along a publication's ownership path. The published page renders
+one plain HTML `<nav>` block per ancestor that has publication index entries.
 
 ### Pipeline artefacts
 
@@ -84,7 +85,7 @@ under `build/html/`. Contains ownership and reference edges as marker
 elements.
 
 **Final HTML** — the transformed, published HTML written by the Prolog
-transformer to `public/`. Markers have been resolved into nav bars and
+transformer to `public/`. Markers have been resolved into index blocks and
 anchors; site chrome has been added.
 
 **Site** — the complete published artefact set: every publication's final
@@ -98,9 +99,9 @@ HTML and consumed by the transformer.
 
 | Marker | Edge produced | Authored as |
 | --- | --- | --- |
-| `<cairnz-nav data-target="T">Label</cairnz-nav>` | ownership edge `(u, T, nav, "Label")` | `#nav("T")[Label]` |
-| `<cairnz-publish data-target="T"></cairnz-publish>` | ownership edge `(u, T, publish, "")` | `#publish("T")` |
-| `<cairnz-link data-target="T">Label</cairnz-link>` | reference edge `(u, T, "Label")` | `#publication-link("T")[Label]` |
+| `<publication-publish data-target="T">Label</publication-publish>` | ownership edge `(u, T, publish, "Label")` | `#publish("T")[Label]` |
+| `<publication-entry data-target="T"></publication-entry>` | ownership edge `(u, T, entry, "")` | `#entry("T")` |
+| `<publication-link data-target="T">Label</publication-link>` | reference edge `(u, T, "Label")` | `#publication-link("T")[Label]` |
 
 Where `u` is the source containing the marker and `T` is the target source.
 
@@ -112,7 +113,7 @@ Let `r ∈ C` be the root publication.
 Let
 
 ```
-E_own ⊆ C × C × {nav, publish} × Σ*
+E_own ⊆ C × C × {publish, entry} × Σ*
 E_ref ⊆ C × C × Σ*
 ```
 
@@ -147,12 +148,12 @@ constrained beyond closure into `R`.
 Edges originating outside `R` are ignored — they place no constraints on
 the build.
 
-**Sibling order.** Nav entries authored by a single owner are ordered by
-their appearance in that source's intermediate HTML
+**Sibling order.** Publication index entries authored by a single owner are
+ordered by their appearance in that source's intermediate HTML
 (DCG-sequential).
 
 **Ownership path.** The unique path `r = p_0, p_1, …, p_n = p` in the
-ownership tree. Used to render `p`'s navigation context.
+ownership tree. Used to render `p`'s publication index context.
 
 **Route function** `ρ : R → URL`:
 
