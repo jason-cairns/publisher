@@ -33,6 +33,13 @@ grep -q '<a href="/thesis/chapter/">Chapter</a>' public/thesis/index.html
 grep -q '<a href="/thesis/chapter/" aria-current="page">Chapter</a>' public/thesis/chapter/index.html
 grep -q 'public without becoming' public/colophon/index.html
 
+# Publication reference links are route-level links, not `.html` file links.
+grep -q '<a href="/colophon/">colophon</a>' public/index.html
+grep -q '<a href="/posts/foo/">Foo</a>' public/writing/index.html
+grep -q '<a href="/writing/">Writing</a>' public/posts/foo/index.html
+grep -q '<a href="/thesis/">Thesis</a>' public/thesis/chapter/index.html
+grep -q '<a href="/">home</a>' public/colophon/index.html
+
 # Markers are an internal protocol; they must not leak into final HTML.
 if grep -R -q '<publication-' public; then
   echo 'public HTML must not include internal publication markers' >&2
@@ -118,7 +125,8 @@ fi
 
 # Fixture: a rendered publication links to a candidate that is silently dropped.
 # Constraint: reference edges from rendered publications must point into the
-# rendered set, since dropped candidates have no route.
+# rendered set, since dropped candidates have no route. Reference edges must
+# not create ownership edges or publish otherwise unreachable sources.
 mkdir -p "$tmp/dangling-link/html" "$tmp/dangling-link/public"
 cp -R build/html/. "$tmp/dangling-link/html/"
 printf '<!DOCTYPE html><html><body><h2>Orphan</h2></body></html>' > "$tmp/dangling-link/html/orphan.html"
@@ -126,6 +134,17 @@ printf '<!DOCTYPE html><html><body><h2>Colophon</h2><p><publication-link data-ta
 
 if scryer-prolog site.pl -- src "$tmp/dangling-link/html" "$tmp/dangling-link/public" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ orphan.typ >/dev/null 2>&1; then
   echo 'reference edges from rendered publications must point into the rendered set' >&2
+  exit 1
+fi
+
+# Fixture: a rendered publication links to a source that was never discovered.
+# Constraint: broken local publication links must fail the transform.
+mkdir -p "$tmp/missing-link/html" "$tmp/missing-link/public"
+cp -R build/html/. "$tmp/missing-link/html/"
+printf '<!DOCTYPE html><html><body><h2>Colophon</h2><p><publication-link data-target="missing.typ">Missing</publication-link></p></body></html>' > "$tmp/missing-link/html/colophon.html"
+
+if scryer-prolog site.pl -- src "$tmp/missing-link/html" "$tmp/missing-link/public" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ >/dev/null 2>&1; then
+  echo 'reference edges from rendered publications must point to known rendered sources' >&2
   exit 1
 fi
 
