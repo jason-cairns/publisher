@@ -216,7 +216,9 @@ documents_site_files_(OutputDir, [document(Source, Body, _)|Documents], AllDocum
     ownership_path(RootSource, Source, OwnershipEdges, Path),
     index_bars(RootSource, Source, Path, AllDocuments, IndexBars),
     final_body(RootSource, Body, CleanBody),
-    site_page(RootSource, Source, IndexBars, CleanBody, Page),
+    blank_line_space_normalized(CleanBody, NormalizedBody),
+    document_title(Source, Body, Title),
+    site_page(RootSource, Title, IndexBars, NormalizedBody, Page),
     source_public_file(OutputDir, RootSource, Source, OutputPath),
     file_chars(OutputPath, Page),
     documents_site_files_(OutputDir, Documents, AllDocuments, OwnershipEdges, RootSource).
@@ -300,17 +302,114 @@ clean_body(RootSource, [C|Cs]) -->
     [C],
     clean_body(RootSource, Cs).
 
-site_page(RootSource, Source, IndexBars, Body, Page) :-
-    phrase(site_page_(RootSource, Source, IndexBars, Body), Page).
+blank_line_space_normalized(Body, Normalized) :-
+    phrase(blank_line_space_normalized_(Normalized), Body).
 
-site_page_(RootSource, Source, IndexBars, Body) -->
+blank_line_space_normalized_(Normalized) -->
+    line_start(Normalized).
+
+line_start([]) --> [].
+line_start(Line) -->
+    line_spaces(Spaces),
+    line_after_spaces(Spaces, Line).
+
+line_spaces([' '|Spaces]) -->
+    " ",
+    line_spaces(Spaces).
+line_spaces([]) --> [].
+
+line_after_spaces(_, ['\n'|Lines]) -->
+    "\n",
+    line_start(Lines).
+line_after_spaces(_, []) --> [].
+line_after_spaces(Spaces, Line) -->
+    [C],
+    { dif(C, '\n') },
+    line_tail(Tail),
+    { append(Spaces, [C|Tail], Line) }.
+
+line_tail(['\n'|Lines]) -->
+    "\n",
+    line_start(Lines).
+line_tail([C|Tail]) -->
+    [C],
+    { dif(C, '\n') },
+    line_tail(Tail).
+line_tail([]) --> [].
+
+document_title(_, Body, Title) :-
+    phrase(first_heading(Title), Body).
+document_title(Source, Body, Source) :-
+    phrase(no_heading, Body).
+
+first_heading(Title) -->
+    heading_open(Level),
+    heading_text(Title),
+    heading_close(Level),
+    any_chars.
+first_heading(Title) -->
+    non_heading_char,
+    first_heading(Title).
+
+heading_open(Level) -->
+    "<h",
+    heading_level(Level),
+    ">".
+
+heading_close(Level) -->
+    "</h",
+    [Level],
+    ">".
+
+heading_level('1') --> "1".
+heading_level('2') --> "2".
+heading_level('3') --> "3".
+heading_level('4') --> "4".
+heading_level('5') --> "5".
+heading_level('6') --> "6".
+
+heading_text([]) --> [].
+heading_text([C|Cs]) -->
+    [C],
+    { dif(C, '<') },
+    heading_text(Cs).
+
+no_heading --> [].
+no_heading -->
+    non_heading_char,
+    no_heading.
+
+non_heading_char -->
+    [C],
+    { dif(C, '<') }.
+non_heading_char -->
+    "<",
+    not_heading_start.
+
+not_heading_start -->
+    [C],
+    { dif(C, 'h') }.
+not_heading_start -->
+    "h",
+    [C],
+    { dif(C, '1'), dif(C, '2'), dif(C, '3'), dif(C, '4'), dif(C, '5'), dif(C, '6') }.
+not_heading_start -->
+    "h",
+    heading_level(_),
+    [C],
+    { dif(C, '>') }.
+
+site_page(RootSource, Title, IndexBars, Body, Page) :-
+    phrase(site_page_(RootSource, Title, IndexBars, Body), Page).
+
+site_page_(RootSource, Title, IndexBars, Body) -->
     "<!doctype html>\n",
     "<html lang=\"en\">\n",
     "  <head>\n",
     "    <meta charset=\"utf-8\">\n",
     "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n",
     "    <title>",
-    seq(Source),
+    seq(Title),
     " - cair.nz</title>\n",
     "  </head>\n",
     "  <body>\n",

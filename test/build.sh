@@ -1,6 +1,17 @@
 #!/bin/sh
 set -eu
 
+assert_matches_golden() {
+  golden=$1
+  generated=$2
+
+  if ! cmp -s "$golden" "$generated"; then
+    echo "$generated must match golden snapshot $golden" >&2
+    diff -u "$golden" "$generated" >&2 || true
+    exit 1
+  fi
+}
+
 # Pipeline produces intermediate HTML, final HTML, and a unified PDF.
 test -s build/html/index.html
 test -s build/html/writing.html
@@ -93,6 +104,12 @@ if grep -qi '<script' public/index.html; then
   echo 'public/index.html must not include JavaScript' >&2
   exit 1
 fi
+
+# Representative final HTML pages are pinned as golden snapshots.
+assert_matches_golden test/golden/public/index.html public/index.html
+assert_matches_golden test/golden/public/posts/foo/index.html public/posts/foo/index.html
+assert_matches_golden test/golden/public/thesis/chapter/index.html public/thesis/chapter/index.html
+assert_matches_golden test/golden/public/colophon/index.html public/colophon/index.html
 
 # Each publication compiles independently to a standalone PDF.
 mkdir -p build/test-preview
