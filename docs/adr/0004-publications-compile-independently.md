@@ -33,6 +33,10 @@ Cross-publication reference relationships are expressed through links only.
 
 Publication ownership is expressed separately through explicit Typst ownership edges defined in ADR 0005.
 
+The unified PDF is assembled from the ownership-derived rendered set in
+ownership preorder. The assembly file is generated during the build, so
+there is no manually maintained list of PDF includes.
+
 ## Consequences
 
 Positive:
@@ -44,4 +48,4 @@ Positive:
 
 Negative:
 - shared layout behavior must be implemented separately
-- unified PDF assembly requires additional orchestration
+- unified PDF assembly requires generated build orchestration

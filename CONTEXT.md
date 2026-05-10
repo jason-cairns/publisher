@@ -88,6 +88,11 @@ elements.
 transformer to `public/`. Markers have been resolved into index blocks and
 anchors; site chrome has been added.
 
+**PDF assembly source** — the generated Typst file written by the
+transformer under `build/`. It includes publications in ownership preorder
+from the same rendered set as final HTML. It is an intermediate artifact,
+not authored metadata.
+
 **Site** — the complete published artefact set: every publication's final
 HTML plus the unified PDF (`public/site.pdf`).
 
@@ -172,9 +177,10 @@ directory `D`:
 
 The transformer is a function
 `T : (E_own, E_ref, body : R → HTML) → Site` that, given valid inputs,
-writes the final HTML at every `π(p)` for `p ∈ R` and rewrites every
-reference marker in those bodies to an anchor whose `href` is
-`ρ(target)`.
+writes the final HTML at every `π(p)` for `p ∈ R`, rewrites every
+reference marker in those bodies to an anchor whose `href` is `ρ(target)`,
+and writes the PDF assembly source by traversing the ownership tree in
+preorder.
 
 ## Invariants worth restating
 

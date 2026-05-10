@@ -13,7 +13,22 @@ test -s public/posts/foo/index.html
 test -s public/thesis/index.html
 test -s public/thesis/chapter/index.html
 test -s public/colophon/index.html
+test -s build/site.typ
 test -s public/site.pdf
+
+site_pdf_order="$(grep '^#publication("' build/site.typ | sed 's/^#publication("//; s/").*$//')"
+expected_pdf_order='index.typ
+writing.typ
+posts/foo.typ
+thesis.typ
+thesis/chapter.typ
+colophon.typ'
+
+if [ "$site_pdf_order" != "$expected_pdf_order" ]; then
+  echo 'unified PDF assembly must follow ownership preorder' >&2
+  printf '%s\n' "$site_pdf_order" >&2
+  exit 1
+fi
 
 # Intermediate HTML carries the marker protocol verbatim.
 grep -q '<body>' build/html/index.html
@@ -98,7 +113,7 @@ mkdir -p "$tmp/unreachable/html" \
 cp -R build/html/. "$tmp/unreachable/html/"
 printf '<!DOCTYPE html><html><body><h2>Orphan</h2></body></html>' > "$tmp/unreachable/html/orphan.html"
 
-scryer-prolog site.pl -- src "$tmp/unreachable/html" "$tmp/unreachable/public" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ orphan.typ
+scryer-prolog site.pl -- src "$tmp/unreachable/html" "$tmp/unreachable/public" "$tmp/unreachable/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ orphan.typ
 
 test -s "$tmp/unreachable/public/index.html"
 test -s "$tmp/unreachable/public/colophon/index.html"
@@ -112,13 +127,20 @@ if [ -e "$tmp/unreachable/public/orphan/index.html" ]; then
   exit 1
 fi
 
+grep -q '#publication("colophon.typ")' "$tmp/unreachable/site.typ"
+
+if grep -q '#publication("orphan.typ")' "$tmp/unreachable/site.typ"; then
+  echo 'sources outside the ownership tree must not enter unified PDF assembly' >&2
+  exit 1
+fi
+
 # Fixture: a publication in the rendered set publishes a target that doesn't exist.
 # Constraint: ownership edges from rendered publications must resolve.
 mkdir -p "$tmp/dangling-target/html" "$tmp/dangling-target/public"
 cp -R build/html/. "$tmp/dangling-target/html/"
 printf '<!DOCTYPE html><html><body><h2>Index</h2><publication-publish data-target="writing.typ">Writing</publication-publish><publication-entry data-target="missing.typ"></publication-entry></body></html>' > "$tmp/dangling-target/html/index.html"
 
-if scryer-prolog site.pl -- src "$tmp/dangling-target/html" "$tmp/dangling-target/public" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ >/dev/null 2>&1; then
+if scryer-prolog site.pl -- src "$tmp/dangling-target/html" "$tmp/dangling-target/public" "$tmp/dangling-target/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ >/dev/null 2>&1; then
   echo 'ownership edges from rendered publications must point to known sources' >&2
   exit 1
 fi
@@ -132,7 +154,7 @@ cp -R build/html/. "$tmp/dangling-link/html/"
 printf '<!DOCTYPE html><html><body><h2>Orphan</h2></body></html>' > "$tmp/dangling-link/html/orphan.html"
 printf '<!DOCTYPE html><html><body><h2>Colophon</h2><p><publication-link data-target="orphan.typ">Orphan</publication-link></p></body></html>' > "$tmp/dangling-link/html/colophon.html"
 
-if scryer-prolog site.pl -- src "$tmp/dangling-link/html" "$tmp/dangling-link/public" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ orphan.typ >/dev/null 2>&1; then
+if scryer-prolog site.pl -- src "$tmp/dangling-link/html" "$tmp/dangling-link/public" "$tmp/dangling-link/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ orphan.typ >/dev/null 2>&1; then
   echo 'reference edges from rendered publications must point into the rendered set' >&2
   exit 1
 fi
@@ -143,7 +165,7 @@ mkdir -p "$tmp/missing-link/html" "$tmp/missing-link/public"
 cp -R build/html/. "$tmp/missing-link/html/"
 printf '<!DOCTYPE html><html><body><h2>Colophon</h2><p><publication-link data-target="missing.typ">Missing</publication-link></p></body></html>' > "$tmp/missing-link/html/colophon.html"
 
-if scryer-prolog site.pl -- src "$tmp/missing-link/html" "$tmp/missing-link/public" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ >/dev/null 2>&1; then
+if scryer-prolog site.pl -- src "$tmp/missing-link/html" "$tmp/missing-link/public" "$tmp/missing-link/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ >/dev/null 2>&1; then
   echo 'reference edges from rendered publications must point to known rendered sources' >&2
   exit 1
 fi
@@ -154,7 +176,7 @@ mkdir -p "$tmp/multi-owner/html" "$tmp/multi-owner/public/posts/foo"
 cp -R build/html/. "$tmp/multi-owner/html/"
 printf '<publication-publish data-target="posts/foo.typ">Foo</publication-publish>' >> "$tmp/multi-owner/html/index.html"
 
-if scryer-prolog site.pl -- src "$tmp/multi-owner/html" "$tmp/multi-owner/public" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ >/dev/null 2>&1; then
+if scryer-prolog site.pl -- src "$tmp/multi-owner/html" "$tmp/multi-owner/public" "$tmp/multi-owner/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ >/dev/null 2>&1; then
   echo 'publications with multiple owners must fail ownership validation' >&2
   exit 1
 fi
@@ -165,9 +187,19 @@ mkdir -p "$tmp/alternate-root/html" "$tmp/alternate-root/public/index"
 printf '<!DOCTYPE html><html><body><publication-publish data-target="index.typ">Home</publication-publish><p><publication-link data-target="index.typ">Home</publication-link></p></body></html>' > "$tmp/alternate-root/html/writing.html"
 printf '<!DOCTYPE html><html><body><p><publication-link data-target="writing.typ">Root</publication-link></p></body></html>' > "$tmp/alternate-root/html/index.html"
 
-scryer-prolog site.pl -- src "$tmp/alternate-root/html" "$tmp/alternate-root/public" writing.typ writing.typ index.typ
+scryer-prolog site.pl -- src "$tmp/alternate-root/html" "$tmp/alternate-root/public" "$tmp/alternate-root/site.typ" writing.typ writing.typ index.typ
 
 test -s "$tmp/alternate-root/public/index.html"
 test -s "$tmp/alternate-root/public/index/index.html"
 grep -q '<a href="/index/">Home</a>' "$tmp/alternate-root/public/index.html"
 grep -q '<a href="/">Root</a>' "$tmp/alternate-root/public/index/index.html"
+
+alternate_root_pdf_order="$(grep '^#publication("' "$tmp/alternate-root/site.typ" | sed 's/^#publication("//; s/").*$//')"
+expected_alternate_root_pdf_order='writing.typ
+index.typ'
+
+if [ "$alternate_root_pdf_order" != "$expected_alternate_root_pdf_order" ]; then
+  echo 'alternate-root unified PDF assembly must follow that root ownership preorder' >&2
+  printf '%s\n' "$alternate_root_pdf_order" >&2
+  exit 1
+fi
