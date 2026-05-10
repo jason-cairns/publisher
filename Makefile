@@ -8,6 +8,7 @@ BUILD_DIR := build
 INTERMEDIATE_DIR := $(BUILD_DIR)/html
 PUBLIC_DIR := public
 ROOT_SOURCE := index.typ
+PDF_TYP_SOURCE := $(BUILD_DIR)/site.typ
 PUBLICATION_TYP_FILES := $(shell find $(SRC_DIR) -name '*.typ' ! -name '_*' -print | sort)
 PUBLICATION_SOURCES := $(patsubst $(SRC_DIR)/%,%,$(PUBLICATION_TYP_FILES))
 
@@ -34,12 +35,14 @@ $(PUBLIC_DIR)/.stamp: $(INTERMEDIATE_DIR)/.stamp site.pl
 		if [ "$$src" = "$(ROOT_SOURCE)" ]; then out="$(PUBLIC_DIR)/index.html"; else out="$(PUBLIC_DIR)/$${src%.typ}/index.html"; fi; \
 		mkdir -p "$$(dirname "$$out")"; \
 	done
-	$(PROLOG) site.pl -- $(SRC_DIR) $(INTERMEDIATE_DIR) $(PUBLIC_DIR) $(ROOT_SOURCE) $(PUBLICATION_SOURCES)
+	$(PROLOG) site.pl -- $(SRC_DIR) $(INTERMEDIATE_DIR) $(PUBLIC_DIR) $(PDF_TYP_SOURCE) $(ROOT_SOURCE) $(PUBLICATION_SOURCES)
 	touch $@
 
-$(PUBLIC_DIR)/site.pdf: $(SRC_DIR)/_site.typ $(PUBLICATION_TYP_FILES) $(SRC_DIR)/_publication.typ
+$(PDF_TYP_SOURCE): $(PUBLIC_DIR)/.stamp
+
+$(PUBLIC_DIR)/site.pdf: $(PDF_TYP_SOURCE) $(PUBLICATION_TYP_FILES) $(SRC_DIR)/_publication.typ
 	mkdir -p $(PUBLIC_DIR)
-	$(TYPST) compile --root $(SRC_DIR) $(SRC_DIR)/_site.typ $@
+	$(TYPST) compile --root . $(PDF_TYP_SOURCE) $@
 
 test: build
 	./test/build.sh

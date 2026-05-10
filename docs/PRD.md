@@ -25,6 +25,8 @@ index item. Publication titles derive from the first level-1 heading in
 generated HTML.
 
 The Prolog transformer accepts input and output directories at runtime. It does not parse Typst source.
+The transformer also writes the generated Typst assembly source for the
+unified PDF from the same ownership-derived rendered set used for final HTML.
 
 ## User Stories
 

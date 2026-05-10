@@ -10,10 +10,10 @@ main :-
     argv(Args),
     main_args(Args).
 
-main_args([SrcDir, HtmlDir, OutputDir, RootSource|Sources]) :-
-    site(SrcDir, HtmlDir, OutputDir, RootSource, Sources),
+main_args([SrcDir, HtmlDir, OutputDir, PdfTypPath, RootSource|Sources]) :-
+    site(SrcDir, HtmlDir, OutputDir, PdfTypPath, RootSource, Sources),
     halt.
-main_args([_, _, _, _|_]) :-
+main_args([_, _, _, _, _|_]) :-
     format("invalid publication ownership graph~n", []),
     halt(1).
 main_args([]) :-
@@ -24,12 +24,14 @@ main_args([_, _]) :-
     usage.
 main_args([_, _, _]) :-
     usage.
+main_args([_, _, _, _]) :-
+    usage.
 
 usage :-
-    format("usage: scryer-prolog site.pl -- SRC_DIR HTML_DIR OUTPUT_DIR ROOT_SOURCE SOURCES...~n", []),
+    format("usage: scryer-prolog site.pl -- SRC_DIR HTML_DIR OUTPUT_DIR PDF_TYP_PATH ROOT_SOURCE SOURCES...~n", []),
     halt(1).
 
-site(SrcDir, HtmlDir, OutputDir, RootSource, Sources) :-
+site(SrcDir, HtmlDir, OutputDir, PdfTypPath, RootSource, Sources) :-
     source_member(RootSource, Sources),
     sources_documents(HtmlDir, Sources, Documents),
     documents_edges(Documents, OwnershipEdges, ReferenceEdges),
@@ -42,7 +44,10 @@ site(SrcDir, HtmlDir, OutputDir, RootSource, Sources) :-
     root_not_owned(RootSource, RenderedOwnership),
     unique_owned_targets(RenderedOwnership),
     valid_owners(Rendered, RootSource, RenderedOwnership),
-    documents_site_files(SrcDir, OutputDir, RenderedDocuments, RenderedOwnership, RootSource).
+    ownership_preorder(RootSource, RenderedOwnership, PdfOrder),
+    documents_site_files(SrcDir, OutputDir, RenderedDocuments, RenderedOwnership, RootSource),
+    pdf_typ_file(SrcDir, PdfOrder, PdfTyp),
+    file_chars(PdfTypPath, PdfTyp).
 
 sources_documents(_, [], []).
 sources_documents(HtmlDir, [Source|Sources], [document(Source, Body, Edges)|Documents]) :-
@@ -160,6 +165,48 @@ target_not_owned_again(_, []).
 target_not_owned_again(Target, [owns(_, Other, _, _)|Edges]) :-
     dif(Target, Other),
     target_not_owned_again(Target, Edges).
+
+ownership_preorder(RootSource, OwnershipEdges, Order) :-
+    preorder_source(RootSource, OwnershipEdges, Order).
+
+preorder_source(Source, OwnershipEdges, [Source|Descendants]) :-
+    ownership_children(Source, OwnershipEdges, Children),
+    preorder_sources(Children, OwnershipEdges, Descendants).
+
+preorder_sources([], _, []).
+preorder_sources([Source|Sources], OwnershipEdges, Order) :-
+    preorder_source(Source, OwnershipEdges, SourceOrder),
+    preorder_sources(Sources, OwnershipEdges, RestOrder),
+    append(SourceOrder, RestOrder, Order).
+
+ownership_children(_, [], []).
+ownership_children(Source, [owns(Source, Target, _, _)|Edges], [Target|Children]) :-
+    ownership_children(Source, Edges, Children).
+ownership_children(Source, [owns(Other, _, _, _)|Edges], Children) :-
+    dif(Source, Other),
+    ownership_children(Source, Edges, Children).
+
+pdf_typ_file(SrcDir, Sources, Typ) :-
+    phrase(pdf_typ_file_(SrcDir, Sources), Typ).
+
+pdf_typ_file_(SrcDir, Sources) -->
+    "#import \"../",
+    seq(SrcDir),
+    "/_publication.typ\": publication\n\n",
+    pdf_publications(SrcDir, Sources).
+
+pdf_publications(_, []) --> [].
+pdf_publications(SrcDir, [Source|Sources]) -->
+    "#publication(\"",
+    seq(Source),
+    "\")[\n",
+    "  #include \"../",
+    seq(SrcDir),
+    "/",
+    seq(Source),
+    "\"\n",
+    "]\n\n",
+    pdf_publications(SrcDir, Sources).
 
 documents_site_files(_, OutputDir, Documents, OwnershipEdges, RootSource) :-
     documents_site_files_(OutputDir, Documents, Documents, OwnershipEdges, RootSource).
