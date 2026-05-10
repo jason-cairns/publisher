@@ -1,5 +1,7 @@
 TYPST ?= typst
 PROLOG ?= scryer-prolog
+PYTHON ?= python3
+SERVE_PORT ?= 8000
 
 SRC_DIR := src
 BUILD_DIR := build
@@ -11,7 +13,7 @@ PUBLICATION_SOURCES := $(patsubst $(SRC_DIR)/%,%,$(PUBLICATION_TYP_FILES))
 
 export TYPST
 
-.PHONY: build clean test
+.PHONY: build clean serve test
 
 build: $(PUBLIC_DIR)/.stamp $(PUBLIC_DIR)/site.pdf
 
@@ -41,6 +43,10 @@ $(PUBLIC_DIR)/site.pdf: $(SRC_DIR)/_site.typ $(PUBLICATION_TYP_FILES) $(SRC_DIR)
 
 test: build
 	./test/build.sh
+
+serve: build
+	@printf 'Serving public at http://localhost:%s/\n' "$(SERVE_PORT)"
+	cd $(PUBLIC_DIR) && $(PYTHON) -m http.server $(SERVE_PORT)
 
 clean:
 	rm -rf $(BUILD_DIR) $(PUBLIC_DIR)
