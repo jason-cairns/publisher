@@ -2,6 +2,6 @@
 
 = Foo
 
-This post is published through Writing's ownership graph.
+This post is public through Writing's anonymous ownership edge.
 
 Return to #publication-link("writing.typ")[Writing].

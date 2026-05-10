@@ -26,9 +26,10 @@ Each publication:
 - contributes to the unified PDF
 - owns exactly one route
 
-No recursive publication semantics are introduced.
+Recursive ownership and inherited publication-index semantics are expressed
+through Typst ownership edges, not through nested compilation.
 
-Cross-publication relationships are expressed through links only.
+Cross-publication reference relationships are expressed through links only.
 
 Publication ownership is expressed separately through explicit Typst ownership edges defined in ADR 0005.
 

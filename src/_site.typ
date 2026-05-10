@@ -12,6 +12,14 @@
   #include "posts/foo.typ"
 ]
 
+#publication("thesis.typ")[
+  #include "thesis.typ"
+]
+
+#publication("thesis/chapter.typ")[
+  #include "thesis/chapter.typ"
+]
+
 #publication("colophon.typ")[
   #include "colophon.typ"
 ]

@@ -35,7 +35,7 @@ Scryer Prolog operates only on generated HTML.
 The Prolog transformer is responsible for:
 - route mapping for the owned publication set
 - ownership graph validation
-- navigation synthesis from Typst-emitted markers
+- publication index synthesis from Typst-emitted markers
 - internal link rewriting
 - site chrome injection
 - HTML normalization

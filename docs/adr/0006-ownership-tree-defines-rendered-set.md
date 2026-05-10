@@ -57,8 +57,8 @@ Positive:
 
 - one rule for "is this published": ownership reachability
 - drafts and sketches can sit in `src/` without forcing build errors
-- typos in ownership edges (`#publish` to a missing target) still error
-  cleanly when the author is in the rendered set
+- typos in ownership edges (`#publish` or `#entry` to a missing target)
+  still error cleanly when the author is in the rendered set
 - the underscore convention can be relaxed or extended without changing
   publication semantics
 
@@ -71,5 +71,5 @@ Negative:
 ## Notes
 
 ADR 0005's other consequences — explicit Typst-authored ownership,
-single-owner per published page, navigation inheritance via the ownership
-path — remain in force.
+single-owner per published page, publication index inheritance via the
+ownership path — remain in force.

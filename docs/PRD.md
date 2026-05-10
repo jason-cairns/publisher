@@ -14,7 +14,15 @@ Build a minimal static publishing pipeline:
 2. Typst compiles the site to a unified PDF.
 3. Scryer Prolog transforms intermediate HTML into final site HTML.
 
-Publications are discovered from explicit Typst ownership edges. The root publication owns child publications through `#nav` and `#publish`. Filesystem paths map owned publications to routes, but they do not decide whether a file is published. The root publication's `#nav` entries define the main navigation. Publication titles derive from the first level-1 heading in generated HTML.
+Publications are discovered from explicit Typst ownership edges. A publication
+owns child publications through `#publish` and `#entry`. Filesystem paths map
+owned publications to routes, but they do not decide whether a file is
+published. A publication's `#publish` entries define an ordered publication
+index that is inherited by descendants and rendered as plain HTML `<nav>`
+blocks.
+`#entry` owns a child publication anonymously, without adding an inherited
+index item. Publication titles derive from the first level-1 heading in
+generated HTML.
 
 The Prolog transformer accepts input and output directories at runtime. It does not parse Typst source.
 
@@ -27,7 +35,7 @@ The Prolog transformer accepts input and output directories at runtime. It does 
 5. As Jason, I want Prolog to accept input and output directories, so that it is not tied to one repository layout.
 6. As Jason, I want Typst-authored ownership edges to define publication structure, so that ownership is explicit without a metadata registry.
 7. As Jason, I want filesystem paths to map owned publications to routes, so that there is no route registry.
-8. As Jason, I want root `#nav` declarations to form the main nav, so that navigation is explicit in Typst.
+8. As Jason, I want root `#publish` declarations to form the site-level publication index, so that indexed ownership is explicit in Typst.
 9. As Jason, I want titles derived from first level-1 headings, so that metadata stays in normal Typst.
 10. As Jason, I want underscore Typst files to be helpers, so that shared functions do not become pages.
 11. As Jason, I want internal publication links, so that links resolve correctly in HTML and PDF.
@@ -49,8 +57,8 @@ The Prolog transformer accepts input and output directories at runtime. It does 
 - The ownership tree defines the rendered set: candidates reachable from the root via ownership edges become publications. Candidates outside the tree are dropped silently and produce no build error (ADR 0006).
 - Underscore Typst documents are helpers by convention; the build skips them at discovery, but the convention is not load-bearing.
 - Publications compile independently.
-- Root `#nav` declarations become main navigation.
-- `#publish` creates publication ownership without a visible nav item.
+- `#publish` creates publication ownership and a visible ordered publication index item.
+- `#entry` creates publication ownership without a visible publication index item.
 - publication links are references only.
 - Titles derive from first level-1 headings in generated HTML.
 - Slice 1 supports publication-level links only.
@@ -61,7 +69,7 @@ Deep modules:
 - Ownership graph discovery.
 - Ownership graph validation.
 - Route resolution.
-- Navigation synthesis.
+- Publication index synthesis.
 - Link rewriting.
 - HTML transformation.
 - PDF assembly.
@@ -79,7 +87,7 @@ Required coverage:
 - ownership graph discovery
 - ownership graph validation
 - route derivation
-- navigation generation
+- publication index generation
 - link rewriting
 - HTML transformation
 - unified PDF artifact creation
@@ -103,7 +111,6 @@ Out of scope for the first implementation slice:
 - JavaScript interactivity
 - Typst source parsing
 - Nix or direnv integration
-- recursive publication semantics
 
 ## Further Notes
 

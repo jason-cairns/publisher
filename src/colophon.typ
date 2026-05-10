@@ -2,7 +2,7 @@
 
 = Colophon
 
-This publication is owned with `#publish`, so it is published without becoming
-a visible navigation item.
+This publication is owned with `#entry`, so it is public without becoming
+part of an inherited publication index.
 
 Return to #publication-link("index.typ")[home].

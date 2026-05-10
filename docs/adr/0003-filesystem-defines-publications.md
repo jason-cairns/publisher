@@ -33,9 +33,9 @@ about.typ      -> /about/
 thesis/ch1.typ -> /thesis/ch1/
 ```
 
-Top-level publications form the main navigation.
+In this superseded model, top-level publications formed the main navigation.
 
-Subdirectory publications do not automatically appear in global navigation.
+Subdirectory publications did not automatically appear in global navigation.
 
 ## Consequences
 

@@ -21,10 +21,10 @@ Load-bearing terms (full definitions in `CONTEXT.md`):
 
 - **Source**, **stem**, **publication candidate**, **helper**.
 - **Publication**, **rendered set**, **root publication**.
-- **Ownership edge** (`nav`, `publish`), **reference edge** (`link`), **owner**.
-- **Ownership graph / tree**, **ownership path**, **navigation context**.
+- **Ownership edge** (`publish`, `entry`), **reference edge** (`link`), **owner**.
+- **Ownership graph / tree**, **ownership path**, **publication index context**.
 - **Intermediate HTML**, **final HTML**, **site**.
-- **Marker protocol**: `cairnz-nav`, `cairnz-publish`, `cairnz-link`.
+- **Marker protocol**: `publication-publish`, `publication-entry`, `publication-link`.
 
 ## ADRs
 

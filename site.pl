@@ -60,9 +60,9 @@ documents_edges([document(Source, _, Edges)|Documents], OwnershipEdges, Referenc
     append(DocumentReferenceEdges, RestReferenceEdges, ReferenceEdges).
 
 document_edges(_, [], [], []).
-document_edges(Source, [edge(nav, Target, Label)|Edges], [owns(Source, Target, nav, Label)|OwnershipEdges], ReferenceEdges) :-
+document_edges(Source, [edge(publish, Target, Label)|Edges], [owns(Source, Target, publish, Label)|OwnershipEdges], ReferenceEdges) :-
     document_edges(Source, Edges, OwnershipEdges, ReferenceEdges).
-document_edges(Source, [edge(publish, Target, [])|Edges], [owns(Source, Target, publish, [])|OwnershipEdges], ReferenceEdges) :-
+document_edges(Source, [edge(entry, Target, [])|Edges], [owns(Source, Target, entry, [])|OwnershipEdges], ReferenceEdges) :-
     document_edges(Source, Edges, OwnershipEdges, ReferenceEdges).
 document_edges(Source, [edge(link, Target, Label)|Edges], OwnershipEdges, [refers(Source, Target, Label)|ReferenceEdges]) :-
     document_edges(Source, Edges, OwnershipEdges, ReferenceEdges).
@@ -167,9 +167,9 @@ documents_site_files(_, OutputDir, Documents, OwnershipEdges, RootSource) :-
 documents_site_files_(_, [], _, _, _).
 documents_site_files_(OutputDir, [document(Source, Body, _)|Documents], AllDocuments, OwnershipEdges, RootSource) :-
     ownership_path(RootSource, Source, OwnershipEdges, Path),
-    nav_bars(RootSource, Path, AllDocuments, NavBars),
+    index_bars(RootSource, Source, Path, AllDocuments, IndexBars),
     final_body(RootSource, Body, CleanBody),
-    site_page(RootSource, Source, NavBars, CleanBody, Page),
+    site_page(RootSource, Source, IndexBars, CleanBody, Page),
     source_public_file(OutputDir, RootSource, Source, OutputPath),
     file_chars(OutputPath, Page),
     documents_site_files_(OutputDir, Documents, AllDocuments, OwnershipEdges, RootSource).
@@ -187,54 +187,62 @@ owns_child(Source, Target, [owns(Source, Other, _, _)|Edges]) :-
     dif(Target, Other),
     owns_child(Source, Target, Edges).
 
-nav_bars(_, [], _, []).
-nav_bars(RootSource, [Source|Sources], Documents, NavBars) :-
-    document_nav_entries(Documents, Source, []),
-    nav_bars(RootSource, Sources, Documents, NavBars).
-nav_bars(RootSource, [Source|Sources], Documents, [NavBar|NavBars]) :-
-    document_nav_entries(Documents, Source, [Entry|Entries]),
-    phrase(nav_bar(RootSource, [Entry|Entries]), NavBar),
-    nav_bars(RootSource, Sources, Documents, NavBars).
+index_bars(_, _, [], _, []).
+index_bars(RootSource, CurrentSource, [Source|Sources], Documents, IndexBars) :-
+    document_index_entries(Documents, Source, []),
+    index_bars(RootSource, CurrentSource, Sources, Documents, IndexBars).
+index_bars(RootSource, CurrentSource, [Source|Sources], Documents, [IndexBar|IndexBars]) :-
+    document_index_entries(Documents, Source, [Entry|Entries]),
+    phrase(index_bar(RootSource, CurrentSource, [Entry|Entries]), IndexBar),
+    index_bars(RootSource, CurrentSource, Sources, Documents, IndexBars).
 
-document_nav_entries([document(Source, _, Edges)|_], Source, Entries) :-
-    nav_entries(Edges, Entries).
-document_nav_entries([document(Other, _, _)|Documents], Source, Entries) :-
+document_index_entries([document(Source, _, Edges)|_], Source, Entries) :-
+    index_entries(Edges, Entries).
+document_index_entries([document(Other, _, _)|Documents], Source, Entries) :-
     dif(Source, Other),
-    document_nav_entries(Documents, Source, Entries).
+    document_index_entries(Documents, Source, Entries).
 
-nav_entries([], []).
-nav_entries([edge(nav, Target, Label)|Edges], [nav_entry(Target, Label)|Entries]) :-
-    nav_entries(Edges, Entries).
-nav_entries([edge(publish, _, _)|Edges], Entries) :-
-    nav_entries(Edges, Entries).
-nav_entries([edge(link, _, _)|Edges], Entries) :-
-    nav_entries(Edges, Entries).
+index_entries([], []).
+index_entries([edge(publish, Target, Label)|Edges], [index_entry(Target, Label)|Entries]) :-
+    index_entries(Edges, Entries).
+index_entries([edge(entry, _, _)|Edges], Entries) :-
+    index_entries(Edges, Entries).
+index_entries([edge(link, _, _)|Edges], Entries) :-
+    index_entries(Edges, Entries).
 
-nav_bar(RootSource, Entries) -->
+index_bar(RootSource, CurrentSource, Entries) -->
     "    <nav>\n",
     "      <ul>\n",
-    nav_items(RootSource, Entries),
+    index_items(RootSource, CurrentSource, Entries),
     "      </ul>\n",
     "    </nav>\n".
 
-nav_items(_, []) --> [].
-nav_items(RootSource, [nav_entry(Target, Label)|Entries]) -->
+index_items(_, _, []) --> [].
+index_items(RootSource, CurrentSource, [index_entry(CurrentSource, Label)|Entries]) -->
+    "        <li><a href=\"",
+    route_href(RootSource, CurrentSource),
+    "\" aria-current=\"page\">",
+    seq(Label),
+    "</a></li>\n",
+    index_items(RootSource, CurrentSource, Entries).
+index_items(RootSource, CurrentSource, [index_entry(Target, Label)|Entries]) -->
+    { dif(CurrentSource, Target) },
     "        <li><a href=\"",
     route_href(RootSource, Target),
     "\">",
     seq(Label),
     "</a></li>\n",
-    nav_items(RootSource, Entries).
+    index_items(RootSource, CurrentSource, Entries).
 
 final_body(RootSource, Body, CleanBody) :-
     phrase(clean_body(RootSource, CleanBody), Body).
 
 clean_body(_, []) --> [].
 clean_body(RootSource, CleanBody) -->
-    nav_marker(_Target, _Label),
+    publish_marker(_Target, _Label),
     clean_body(RootSource, CleanBody).
 clean_body(RootSource, CleanBody) -->
-    publish_marker(_Target),
+    entry_marker(_Target),
     clean_body(RootSource, CleanBody).
 clean_body(RootSource, CleanBody) -->
     link_marker(Target, Label),
@@ -245,10 +253,10 @@ clean_body(RootSource, [C|Cs]) -->
     [C],
     clean_body(RootSource, Cs).
 
-site_page(RootSource, Source, NavBars, Body, Page) :-
-    phrase(site_page_(RootSource, Source, NavBars, Body), Page).
+site_page(RootSource, Source, IndexBars, Body, Page) :-
+    phrase(site_page_(RootSource, Source, IndexBars, Body), Page).
 
-site_page_(RootSource, Source, NavBars, Body) -->
+site_page_(RootSource, Source, IndexBars, Body) -->
     "<!doctype html>\n",
     "<html lang=\"en\">\n",
     "  <head>\n",
@@ -262,17 +270,17 @@ site_page_(RootSource, Source, NavBars, Body) -->
     "    <header><a href=\"",
     route_href(RootSource, RootSource),
     "\">cair.nz</a></header>\n",
-    nav_bar_blocks(NavBars),
+    index_bar_blocks(IndexBars),
     "    <main>\n",
     Body,
     "\n    </main>\n",
     "  </body>\n",
     "</html>\n".
 
-nav_bar_blocks([]) --> [].
-nav_bar_blocks([NavBar|NavBars]) -->
-    seq(NavBar),
-    nav_bar_blocks(NavBars).
+index_bar_blocks([]) --> [].
+index_bar_blocks([IndexBar|IndexBars]) -->
+    seq(IndexBar),
+    index_bar_blocks(IndexBars).
 
 publication_anchor(RootSource, Target, Label) -->
     "<a href=\"",
@@ -294,11 +302,11 @@ html_body_(Body) -->
 html_edges(Html, Edges) :-
     phrase(html_edges_(Edges), Html).
 
-html_edges_([edge(nav, Target, Label)|Edges]) -->
-    nav_marker(Target, Label),
+html_edges_([edge(publish, Target, Label)|Edges]) -->
+    publish_marker(Target, Label),
     html_edges_(Edges).
-html_edges_([edge(publish, Target, [])|Edges]) -->
-    publish_marker(Target),
+html_edges_([edge(entry, Target, [])|Edges]) -->
+    entry_marker(Target),
     html_edges_(Edges).
 html_edges_([edge(link, Target, Label)|Edges]) -->
     link_marker(Target, Label),
@@ -308,19 +316,19 @@ html_edges_(Edges) -->
     html_edges_(Edges).
 html_edges_([]) --> [].
 
-nav_marker(Target, Label) -->
-    "<cairnz-nav data-target=\"",
+publish_marker(Target, Label) -->
+    "<publication-publish data-target=\"",
     attr_value(Target),
     ">",
-    nav_body(Label).
+    publish_body(Label).
 
-publish_marker(Target) -->
-    "<cairnz-publish data-target=\"",
+entry_marker(Target) -->
+    "<publication-entry data-target=\"",
     attr_value(Target),
-    "></cairnz-publish>".
+    "></publication-entry>".
 
 link_marker(Target, Label) -->
-    "<cairnz-link data-target=\"",
+    "<publication-link data-target=\"",
     attr_value(Target),
     ">",
     link_body(Label).
@@ -328,10 +336,10 @@ link_marker(Target, Label) -->
 attr_value([]) --> "\"".
 attr_value([C|Cs]) --> [C], { dif(C, '"') }, attr_value(Cs).
 
-nav_body([]) --> "</cairnz-nav>".
-nav_body([C|Cs]) --> [C], { dif(C, '<') }, nav_body(Cs).
+publish_body([]) --> "</publication-publish>".
+publish_body([C|Cs]) --> [C], { dif(C, '<') }, publish_body(Cs).
 
-link_body([]) --> "</cairnz-link>".
+link_body([]) --> "</publication-link>".
 link_body([C|Cs]) --> [C], { dif(C, '<') }, link_body(Cs).
 
 non_marker_char(C) -->
@@ -341,11 +349,11 @@ non_marker_char('<') -->
     "<",
     not_marker_prefix.
 
-% Commit point: at "<cairnz-" the parser MUST match a marker, not
+% Commit point: at "<publication-" the parser MUST match a marker, not
 % character-eat the prefix. Without this, html_edges//1 is
 % non-deterministic and validation can be bypassed by backtracking into
 % an alternative parse where a marker was never extracted.
-not_marker_prefix --> not_marker_prefix_after("cairnz-").
+not_marker_prefix --> not_marker_prefix_after("publication-").
 
 not_marker_prefix_after([Expected|_]) -->
     [C],

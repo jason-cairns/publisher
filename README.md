@@ -17,7 +17,9 @@ final site HTML, and compiles a unified PDF artifact.
 
 The implementation is intentionally small: no JavaScript, no YAML or
 frontmatter, no route registry, and no Prolog parsing of Typst source.
-Publication ownership is declared in Typst with `#nav` and `#publish`.
+Publication ownership is declared in Typst with `#publish` and `#entry`.
+`#publish` adds the child to an inherited publication index; `#entry` owns
+the child anonymously.
 
 Run:
 
