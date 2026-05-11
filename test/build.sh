@@ -1,6 +1,17 @@
 #!/bin/sh
 set -eu
 
+assert_matches_golden() {
+  golden=$1
+  generated=$2
+
+  if ! cmp -s "$golden" "$generated"; then
+    echo "$generated must match golden snapshot $golden" >&2
+    diff -u "$golden" "$generated" >&2 || true
+    exit 1
+  fi
+}
+
 # Pipeline produces intermediate HTML, final HTML, and a unified PDF.
 test -s build/html/index.html
 test -s build/html/writing.html
@@ -94,6 +105,12 @@ if grep -qi '<script' public/index.html; then
   exit 1
 fi
 
+# Representative final HTML pages are pinned as golden snapshots.
+assert_matches_golden test/golden/public/index.html public/index.html
+assert_matches_golden test/golden/public/posts/foo/index.html public/posts/foo/index.html
+assert_matches_golden test/golden/public/thesis/chapter/index.html public/thesis/chapter/index.html
+assert_matches_golden test/golden/public/colophon/index.html public/colophon/index.html
+
 # Each publication compiles independently to a standalone PDF.
 mkdir -p build/test-preview
 ${TYPST:?TYPST is required} compile --root src src/index.typ build/test-preview/index.pdf
@@ -169,6 +186,17 @@ if scryer-prolog site.pl -- src "$tmp/missing-link/html" "$tmp/missing-link/publ
   echo 'reference edges from rendered publications must point to known rendered sources' >&2
   exit 1
 fi
+
+# Fixture: a heading can start with inline markup emitted by Typst HTML.
+# Constraint: title extraction must use the heading text without turning valid
+# inline heading markup into a transform failure.
+mkdir -p "$tmp/inline-heading/html" "$tmp/inline-heading/public"
+printf '<!DOCTYPE html><html><body><h2><em>Intro</em></h2><p>Body.</p></body></html>' > "$tmp/inline-heading/html/index.html"
+
+scryer-prolog site.pl -- src "$tmp/inline-heading/html" "$tmp/inline-heading/public" "$tmp/inline-heading/site.typ" index.typ index.typ
+
+grep -q '<title>Intro - cair.nz</title>' "$tmp/inline-heading/public/index.html"
+grep -q '<h2><em>Intro</em></h2>' "$tmp/inline-heading/public/index.html"
 
 # Fixture: posts/foo is owned by both writing (#entry) and index (#publish).
 # Constraint: every publication except the root has exactly one owner.
