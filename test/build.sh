@@ -187,6 +187,17 @@ if scryer-prolog site.pl -- src "$tmp/missing-link/html" "$tmp/missing-link/publ
   exit 1
 fi
 
+# Fixture: a heading can start with inline markup emitted by Typst HTML.
+# Constraint: title extraction must use the heading text without turning valid
+# inline heading markup into a transform failure.
+mkdir -p "$tmp/inline-heading/html" "$tmp/inline-heading/public"
+printf '<!DOCTYPE html><html><body><h2><em>Intro</em></h2><p>Body.</p></body></html>' > "$tmp/inline-heading/html/index.html"
+
+scryer-prolog site.pl -- src "$tmp/inline-heading/html" "$tmp/inline-heading/public" "$tmp/inline-heading/site.typ" index.typ index.typ
+
+grep -q '<title>Intro - cair.nz</title>' "$tmp/inline-heading/public/index.html"
+grep -q '<h2><em>Intro</em></h2>' "$tmp/inline-heading/public/index.html"
+
 # Fixture: posts/foo is owned by both writing (#entry) and index (#publish).
 # Constraint: every publication except the root has exactly one owner.
 mkdir -p "$tmp/multi-owner/html" "$tmp/multi-owner/public/posts/foo"

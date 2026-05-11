@@ -344,8 +344,7 @@ document_title(Source, Body, Source) :-
 
 first_heading(Title) -->
     heading_open(Level),
-    heading_text(Title),
-    heading_close(Level),
+    heading_text(Level, Title),
     any_chars.
 first_heading(Title) -->
     non_heading_char,
@@ -368,11 +367,26 @@ heading_level('4') --> "4".
 heading_level('5') --> "5".
 heading_level('6') --> "6".
 
-heading_text([]) --> [].
-heading_text([C|Cs]) -->
+heading_text(Level, []) -->
+    heading_close(Level).
+heading_text(Level, Text) -->
+    inline_html_tag,
+    heading_text(Level, Text).
+heading_text(Level, [C|Cs]) -->
     [C],
     { dif(C, '<') },
-    heading_text(Cs).
+    heading_text(Level, Cs).
+
+inline_html_tag -->
+    "<",
+    tag_chars.
+
+tag_chars -->
+    ">".
+tag_chars -->
+    [C],
+    { dif(C, '>') },
+    tag_chars.
 
 no_heading --> [].
 no_heading -->
