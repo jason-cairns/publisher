@@ -23,6 +23,11 @@ blocks.
 `#entry` owns a child publication anonymously, without adding an inherited
 index item. Publication titles derive from the first level-1 heading in
 generated HTML.
+Authors can define site-global publication labels with
+`#publication-label(<name>)` and link to them with
+`#publication-ref(<name>)[Text]`. Label references are ordinary reference
+edges: they do not create ownership, publication-index context, publication
+inclusion, or PDF ordering.
 
 The Prolog transformer accepts input and output directories at runtime. It does not parse Typst source.
 The transformer also writes the generated Typst assembly source for the
@@ -41,7 +46,7 @@ unified PDF from the same ownership-derived rendered set used for final HTML.
 9. As Jason, I want titles derived from first level-1 headings, so that metadata stays in normal Typst.
 10. As Jason, I want underscore Typst files to be helpers, so that shared functions do not become pages.
 11. As Jason, I want internal publication links, so that links resolve correctly in HTML and PDF.
-12. As Jason, I want deep anchors deferred, so that the first slice stays narrow.
+12. As Jason, I want explicit site-global publication labels, so that deep references are authored intentionally rather than derived from headings.
 13. As Jason, I want semantic HTML, so that the site remains accessible and inspectable.
 14. As Jason, I want a unified PDF, so that the whole site can be read as one document.
 15. As Jason, I want automated tests from the beginning, so that every module is safe to change.
@@ -62,8 +67,11 @@ unified PDF from the same ownership-derived rendered set used for final HTML.
 - `#publish` creates publication ownership and a visible ordered publication index item.
 - `#entry` creates publication ownership without a visible publication index item.
 - publication links are references only.
+- `#publication-label(<name>)` defines a site-global label in the rendered set.
+- `#publication-ref(<name>)[Text]` links to a rendered site-global label without affecting ownership.
+- Stable label fragments are the label names as authored, e.g. `<pricing-signal>` maps to `#pricing-signal`.
 - Titles derive from first level-1 headings in generated HTML.
-- Slice 1 supports publication-level links only.
+- Heading-derived deep anchors are out of scope by default.
 - JavaScript, YAML, frontmatter, route registries, and frameworks are out by default.
 
 Deep modules:
@@ -73,6 +81,7 @@ Deep modules:
 - Route resolution.
 - Publication index synthesis.
 - Link rewriting.
+- Site-global label validation and rewriting.
 - HTML transformation.
 - PDF assembly.
 - Build orchestration.
@@ -95,6 +104,7 @@ Required coverage:
 - unified PDF artifact creation
 - build orchestration
 - broken local link detection
+- duplicate and missing publication label detection
 - golden output snapshots
 
 The Prolog transformer should be testable without invoking Typst by using HTML fixtures.

@@ -30,6 +30,8 @@ Typst exposes three publication relationships:
 - `#publish(target)[Label]` creates an ownership edge and a visible ordered publication index item.
 - `#entry(target)` creates an ownership edge without adding a visible publication index item.
 - `#publication-link(target)[Label]` creates a reference edge only.
+- `#publication-label(<name>)` defines a site-global label at the current point in the publication.
+- `#publication-ref(<name>)[Label]` creates a reference edge to a site-global label only.
 
 The ownership graph has these constraints:
 
@@ -38,11 +40,16 @@ The ownership graph has these constraints:
 - sibling publication index order follows source order
 - ordinary reference links may be cyclic
 - reference links must point to publications already in the ownership tree
+- rendered publication labels must be unique across the site
+- label references must point to labels defined by publications already in the ownership tree
 
 Publication index context is derived from the unique ownership path from the
 root to a publication.
 
 Routes still derive from source paths. Filesystem paths map owned publications to URLs, but filesystem structure does not decide whether a file is published.
+Stable label fragments derive from the explicit Typst label name, not from
+heading text. For example, `<pricing-signal>` maps to `#pricing-signal` in
+HTML.
 
 Prolog operates only on Typst-generated HTML. Typst helpers emit semantic HTML markers for ownership and reference edges; Prolog reads those markers from intermediate HTML and never parses Typst source.
 

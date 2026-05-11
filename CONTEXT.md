@@ -59,6 +59,14 @@ Ownership edges define the rendered set.
 Typst with `#publication-link`. Reference edges express ordinary
 hyperlinks. They do not contribute to ownership.
 
+**Publication label** — a site-global label defined in a rendered
+publication with `#publication-label(<name>)`. The stable HTML fragment is
+the label name, e.g. `<pricing-signal>` becomes `#pricing-signal`.
+
+**Label reference** — a reference to a publication label, authored with
+`#publication-ref(<name>)[Text]`. Label references do not contribute to
+ownership, publication inclusion, PDF order, or publication index context.
+
 **Ownership graph** — the directed graph on publications whose edges are
 the ownership edges restricted to `R`. Constrained to be a rooted tree
 (see Formal model).
@@ -107,8 +115,11 @@ HTML and consumed by the transformer.
 | `<publication-publish data-target="T">Label</publication-publish>` | ownership edge `(u, T, publish, "Label")` | `#publish("T")[Label]` |
 | `<publication-entry data-target="T"></publication-entry>` | ownership edge `(u, T, entry, "")` | `#entry("T")` |
 | `<publication-link data-target="T">Label</publication-link>` | reference edge `(u, T, "Label")` | `#publication-link("T")[Label]` |
+| `<publication-label data-label="A"></publication-label>` | label definition `(u, A)` | `#publication-label(<A>)` |
+| `<publication-ref data-label="A">Label</publication-ref>` | label reference `(u, A, "Label")` | `#publication-ref(<A>)[Label]` |
 
-Where `u` is the source containing the marker and `T` is the target source.
+Where `u` is the source containing the marker, `T` is the target source,
+and `A` is a site-global label name.
 
 ## Formal model
 
@@ -120,9 +131,12 @@ Let
 ```
 E_own ⊆ C × C × {publish, entry} × Σ*
 E_ref ⊆ C × C × Σ*
+L_def ⊆ C × Σ*
+L_ref ⊆ C × Σ* × Σ*
 ```
 
-be the ownership and reference edges extracted from the intermediate HTML.
+be the ownership edges, publication reference edges, publication label
+definitions, and label references extracted from the intermediate HTML.
 
 Let `own ⊆ C × C` be the projection of `E_own` to its first two
 components: `own = { (u, v) | ∃ k, ℓ.  (u, v, k, ℓ) ∈ E_own }`.
@@ -145,10 +159,15 @@ A valid build satisfies all of:
 3. **Root unowned.** There is no `u ∈ R` with `(u, r) ∈ own`.
 4. **Reference closure.** For every `(u, v, ℓ) ∈ E_ref` with `u ∈ R`,
    `v ∈ R`.
+5. **Label uniqueness.** For every label name `a`, there is at most one
+   `u ∈ R` with `(u, a) ∈ L_def`.
+6. **Label reference closure.** For every `(u, a, ℓ) ∈ L_ref` with
+   `u ∈ R`, there is some `v ∈ R` with `(v, a) ∈ L_def`.
 
 Conditions (1)–(3) make `own` restricted to `R × R` a rooted tree with
 root `r`. Reference edges (condition 4) may be cyclic and are not
-constrained beyond closure into `R`.
+constrained beyond closure into `R`. Label references (condition 6) are
+ordinary references into the rendered set's site-global label table.
 
 Edges originating outside `R` are ignored — they place no constraints on
 the build.
@@ -167,6 +186,12 @@ ownership tree. Used to render `p`'s publication index context.
 ρ(p) = "/" + stem(p) + "/"        for p ≠ r
 ```
 
+**Label fragment function** `φ : Σ* → Fragment`:
+
+```
+φ(a) = "#" + a
+```
+
 **Output-path function** `π : R → FilePath`, parameterised by output
 directory `D`:
 
@@ -176,9 +201,11 @@ directory `D`:
 ```
 
 The transformer is a function
-`T : (E_own, E_ref, body : R → HTML) → Site` that, given valid inputs,
+`T : (E_own, E_ref, L_def, L_ref, body : R → HTML) → Site` that, given valid inputs,
 writes the final HTML at every `π(p)` for `p ∈ R`, rewrites every
 reference marker in those bodies to an anchor whose `href` is `ρ(target)`,
+rewrites every label reference to `φ(label)` for local references or
+`ρ(label_source) + φ(label)` for cross-publication references,
 and writes the PDF assembly source by traversing the ownership tree in
 preorder.
 
@@ -191,5 +218,7 @@ preorder.
   ownership reachability.
 - The underscore convention is a discovery hint, not a publishing rule.
   Anything not in `R` — underscored or not — is dropped silently.
-- A failure of any condition (1)–(4) on edges originating in `R` is a
+- A failure of any condition (1)–(6) on edges originating in `R` is a
   build error. Edges originating outside `R` impose no constraints.
+- Label definitions and label references outside `R` are ignored; they do
+  not publish otherwise dropped candidates.
