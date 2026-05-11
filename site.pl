@@ -34,18 +34,22 @@ usage :-
 site(SrcDir, HtmlDir, OutputDir, PdfTypPath, RootSource, Sources) :-
     source_member(RootSource, Sources),
     sources_documents(HtmlDir, Sources, Documents),
-    documents_edges(Documents, OwnershipEdges, ReferenceEdges),
+    documents_edges(Documents, OwnershipEdges, ReferenceEdges, LabelDefs, LabelRefs),
     rendered_set(RootSource, Sources, OwnershipEdges, Rendered),
     documents_in(Rendered, Documents, RenderedDocuments),
     own_edges_from(OwnershipEdges, Rendered, RenderedOwnership),
     ref_edges_from(ReferenceEdges, Rendered, RenderedReferences),
+    label_defs_from(LabelDefs, Rendered, RenderedLabelDefs),
+    label_refs_from(LabelRefs, Rendered, RenderedLabelRefs),
     edges_targets_present(RenderedOwnership, Rendered),
     edges_targets_present(RenderedReferences, Rendered),
+    unique_label_defs(RenderedLabelDefs),
+    label_refs_present(RenderedLabelRefs, RenderedLabelDefs),
     root_not_owned(RootSource, RenderedOwnership),
     unique_owned_targets(RenderedOwnership),
     valid_owners(Rendered, RootSource, RenderedOwnership),
     ownership_preorder(RootSource, RenderedOwnership, PdfOrder),
-    documents_site_files(SrcDir, OutputDir, RenderedDocuments, RenderedOwnership, RootSource),
+    documents_site_files(SrcDir, OutputDir, RenderedDocuments, RenderedOwnership, RenderedLabelDefs, RootSource),
     pdf_typ_file(SrcDir, PdfOrder, PdfTyp),
     file_chars(PdfTypPath, PdfTyp).
 
@@ -57,20 +61,26 @@ sources_documents(HtmlDir, [Source|Sources], [document(Source, Body, Edges)|Docu
     html_edges(Html, Edges),
     sources_documents(HtmlDir, Sources, Documents).
 
-documents_edges([], [], []).
-documents_edges([document(Source, _, Edges)|Documents], OwnershipEdges, ReferenceEdges) :-
-    document_edges(Source, Edges, DocumentOwnershipEdges, DocumentReferenceEdges),
-    documents_edges(Documents, RestOwnershipEdges, RestReferenceEdges),
+documents_edges([], [], [], [], []).
+documents_edges([document(Source, _, Edges)|Documents], OwnershipEdges, ReferenceEdges, LabelDefs, LabelRefs) :-
+    document_edges(Source, Edges, DocumentOwnershipEdges, DocumentReferenceEdges, DocumentLabelDefs, DocumentLabelRefs),
+    documents_edges(Documents, RestOwnershipEdges, RestReferenceEdges, RestLabelDefs, RestLabelRefs),
     append(DocumentOwnershipEdges, RestOwnershipEdges, OwnershipEdges),
-    append(DocumentReferenceEdges, RestReferenceEdges, ReferenceEdges).
+    append(DocumentReferenceEdges, RestReferenceEdges, ReferenceEdges),
+    append(DocumentLabelDefs, RestLabelDefs, LabelDefs),
+    append(DocumentLabelRefs, RestLabelRefs, LabelRefs).
 
-document_edges(_, [], [], []).
-document_edges(Source, [edge(publish, Target, Label)|Edges], [owns(Source, Target, publish, Label)|OwnershipEdges], ReferenceEdges) :-
-    document_edges(Source, Edges, OwnershipEdges, ReferenceEdges).
-document_edges(Source, [edge(entry, Target, [])|Edges], [owns(Source, Target, entry, [])|OwnershipEdges], ReferenceEdges) :-
-    document_edges(Source, Edges, OwnershipEdges, ReferenceEdges).
-document_edges(Source, [edge(link, Target, Label)|Edges], OwnershipEdges, [refers(Source, Target, Label)|ReferenceEdges]) :-
-    document_edges(Source, Edges, OwnershipEdges, ReferenceEdges).
+document_edges(_, [], [], [], [], []).
+document_edges(Source, [edge(publish, Target, Label)|Edges], [owns(Source, Target, publish, Label)|OwnershipEdges], ReferenceEdges, LabelDefs, LabelRefs) :-
+    document_edges(Source, Edges, OwnershipEdges, ReferenceEdges, LabelDefs, LabelRefs).
+document_edges(Source, [edge(entry, Target, [])|Edges], [owns(Source, Target, entry, [])|OwnershipEdges], ReferenceEdges, LabelDefs, LabelRefs) :-
+    document_edges(Source, Edges, OwnershipEdges, ReferenceEdges, LabelDefs, LabelRefs).
+document_edges(Source, [edge(link, Target, Label)|Edges], OwnershipEdges, [refers(Source, Target, Label)|ReferenceEdges], LabelDefs, LabelRefs) :-
+    document_edges(Source, Edges, OwnershipEdges, ReferenceEdges, LabelDefs, LabelRefs).
+document_edges(Source, [edge(label, Name)|Edges], OwnershipEdges, ReferenceEdges, [defines_label(Source, Name)|LabelDefs], LabelRefs) :-
+    document_edges(Source, Edges, OwnershipEdges, ReferenceEdges, LabelDefs, LabelRefs).
+document_edges(Source, [edge(label_ref, Name, Label)|Edges], OwnershipEdges, ReferenceEdges, LabelDefs, [refers_label(Source, Name, Label)|LabelRefs]) :-
+    document_edges(Source, Edges, OwnershipEdges, ReferenceEdges, LabelDefs, LabelRefs).
 
 edges_targets_present([], _).
 edges_targets_present([owns(_, Target, _, _)|Edges], Sources) :-
@@ -132,6 +142,47 @@ ref_edges_from([refers(Source, Target, Label)|Edges], Rendered, [refers(Source, 
 ref_edges_from([refers(Source, _, _)|Edges], Rendered, Within) :-
     source_not_member(Source, Rendered),
     ref_edges_from(Edges, Rendered, Within).
+
+label_defs_from([], _, []).
+label_defs_from([defines_label(Source, Name)|Labels], Rendered, [defines_label(Source, Name)|Within]) :-
+    source_member(Source, Rendered),
+    label_defs_from(Labels, Rendered, Within).
+label_defs_from([defines_label(Source, _)|Labels], Rendered, Within) :-
+    source_not_member(Source, Rendered),
+    label_defs_from(Labels, Rendered, Within).
+
+label_refs_from([], _, []).
+label_refs_from([refers_label(Source, Name, Label)|Labels], Rendered, [refers_label(Source, Name, Label)|Within]) :-
+    source_member(Source, Rendered),
+    label_refs_from(Labels, Rendered, Within).
+label_refs_from([refers_label(Source, _, _)|Labels], Rendered, Within) :-
+    source_not_member(Source, Rendered),
+    label_refs_from(Labels, Rendered, Within).
+
+unique_label_defs([]).
+unique_label_defs([defines_label(_, Name)|Labels]) :-
+    label_not_defined_again(Name, Labels),
+    unique_label_defs(Labels).
+
+label_not_defined_again(_, []).
+label_not_defined_again(Name, [defines_label(_, Other)|Labels]) :-
+    dif(Name, Other),
+    label_not_defined_again(Name, Labels).
+
+label_refs_present([], _).
+label_refs_present([refers_label(_, Name, _)|Refs], LabelDefs) :-
+    label_defined(Name, LabelDefs),
+    label_refs_present(Refs, LabelDefs).
+
+label_defined(Name, [defines_label(_, Name)|_]).
+label_defined(Name, [defines_label(_, Other)|Labels]) :-
+    dif(Name, Other),
+    label_defined(Name, Labels).
+
+label_source(Name, [defines_label(Source, Name)|_], Source).
+label_source(Name, [defines_label(_, Other)|Labels], Source) :-
+    dif(Name, Other),
+    label_source(Name, Labels, Source).
 
 valid_owners([], _, _).
 valid_owners([Source|Sources], RootSource, OwnershipEdges) :-
@@ -208,20 +259,20 @@ pdf_publications(SrcDir, [Source|Sources]) -->
     "]\n\n",
     pdf_publications(SrcDir, Sources).
 
-documents_site_files(_, OutputDir, Documents, OwnershipEdges, RootSource) :-
-    documents_site_files_(OutputDir, Documents, Documents, OwnershipEdges, RootSource).
+documents_site_files(_, OutputDir, Documents, OwnershipEdges, LabelDefs, RootSource) :-
+    documents_site_files_(OutputDir, Documents, Documents, OwnershipEdges, LabelDefs, RootSource).
 
-documents_site_files_(_, [], _, _, _).
-documents_site_files_(OutputDir, [document(Source, Body, _)|Documents], AllDocuments, OwnershipEdges, RootSource) :-
+documents_site_files_(_, [], _, _, _, _).
+documents_site_files_(OutputDir, [document(Source, Body, _)|Documents], AllDocuments, OwnershipEdges, LabelDefs, RootSource) :-
     ownership_path(RootSource, Source, OwnershipEdges, Path),
     index_bars(RootSource, Source, Path, AllDocuments, IndexBars),
-    final_body(RootSource, Body, CleanBody),
+    final_body(RootSource, Source, LabelDefs, Body, CleanBody),
     blank_line_space_normalized(CleanBody, NormalizedBody),
     document_title(Source, Body, Title),
     site_page(RootSource, Title, IndexBars, NormalizedBody, Page),
     source_public_file(OutputDir, RootSource, Source, OutputPath),
     file_chars(OutputPath, Page),
-    documents_site_files_(OutputDir, Documents, AllDocuments, OwnershipEdges, RootSource).
+    documents_site_files_(OutputDir, Documents, AllDocuments, OwnershipEdges, LabelDefs, RootSource).
 
 ownership_path(Source, Source, _, [Source]).
 ownership_path(RootSource, Source, OwnershipEdges, [RootSource|Path]) :-
@@ -258,6 +309,10 @@ index_entries([edge(entry, _, _)|Edges], Entries) :-
     index_entries(Edges, Entries).
 index_entries([edge(link, _, _)|Edges], Entries) :-
     index_entries(Edges, Entries).
+index_entries([edge(label, _)|Edges], Entries) :-
+    index_entries(Edges, Entries).
+index_entries([edge(label_ref, _, _)|Edges], Entries) :-
+    index_entries(Edges, Entries).
 
 index_bar(RootSource, CurrentSource, Entries) -->
     "    <nav>\n",
@@ -283,24 +338,35 @@ index_items(RootSource, CurrentSource, [index_entry(Target, Label)|Entries]) -->
     "</a></li>\n",
     index_items(RootSource, CurrentSource, Entries).
 
-final_body(RootSource, Body, CleanBody) :-
-    phrase(clean_body(RootSource, CleanBody), Body).
+final_body(RootSource, Source, LabelDefs, Body, CleanBody) :-
+    phrase(clean_body(RootSource, Source, LabelDefs, CleanBody), Body).
 
-clean_body(_, []) --> [].
-clean_body(RootSource, CleanBody) -->
+clean_body(_, _, _, []) --> [].
+clean_body(RootSource, Source, LabelDefs, CleanBody) -->
     publish_marker(_Target, _Label),
-    clean_body(RootSource, CleanBody).
-clean_body(RootSource, CleanBody) -->
+    clean_body(RootSource, Source, LabelDefs, CleanBody).
+clean_body(RootSource, Source, LabelDefs, CleanBody) -->
     entry_marker(_Target),
-    clean_body(RootSource, CleanBody).
-clean_body(RootSource, CleanBody) -->
+    clean_body(RootSource, Source, LabelDefs, CleanBody).
+clean_body(RootSource, Source, LabelDefs, CleanBody) -->
     link_marker(Target, Label),
     { phrase(publication_anchor(RootSource, Target, Label), Anchor) },
-    clean_body(RootSource, Rest),
+    clean_body(RootSource, Source, LabelDefs, Rest),
     { append(Anchor, Rest, CleanBody) }.
-clean_body(RootSource, [C|Cs]) -->
+clean_body(RootSource, Source, LabelDefs, CleanBody) -->
+    label_marker(Name),
+    { phrase(label_anchor(Name), Anchor) },
+    clean_body(RootSource, Source, LabelDefs, Rest),
+    { append(Anchor, Rest, CleanBody) }.
+clean_body(RootSource, Source, LabelDefs, CleanBody) -->
+    label_ref_marker(Name, Label),
+    { label_source(Name, LabelDefs, TargetSource),
+      phrase(label_ref_anchor(RootSource, Source, TargetSource, Name, Label), Anchor) },
+    clean_body(RootSource, Source, LabelDefs, Rest),
+    { append(Anchor, Rest, CleanBody) }.
+clean_body(RootSource, Source, LabelDefs, [C|Cs]) -->
     [C],
-    clean_body(RootSource, Cs).
+    clean_body(RootSource, Source, LabelDefs, Cs).
 
 blank_line_space_normalized(Body, Normalized) :-
     phrase(blank_line_space_normalized_(Normalized), Body).
@@ -449,6 +515,27 @@ publication_anchor(RootSource, Target, Label) -->
     seq(Label),
     "</a>".
 
+label_anchor(Name) -->
+    "<span id=\"",
+    seq(Name),
+    "\"></span>".
+
+label_ref_anchor(RootSource, Source, TargetSource, Name, Label) -->
+    "<a href=\"",
+    label_href(RootSource, Source, TargetSource, Name),
+    "\">",
+    seq(Label),
+    "</a>".
+
+label_href(_, Source, Source, Name) -->
+    "#",
+    seq(Name).
+label_href(RootSource, Source, TargetSource, Name) -->
+    { dif(Source, TargetSource) },
+    route_href(RootSource, TargetSource),
+    "#",
+    seq(Name).
+
 html_body(Html, Body) :-
     phrase(html_body_(Body), Html).
 
@@ -470,6 +557,12 @@ html_edges_([edge(entry, Target, [])|Edges]) -->
     html_edges_(Edges).
 html_edges_([edge(link, Target, Label)|Edges]) -->
     link_marker(Target, Label),
+    html_edges_(Edges).
+html_edges_([edge(label, Name)|Edges]) -->
+    label_marker(Name),
+    html_edges_(Edges).
+html_edges_([edge(label_ref, Name, Label)|Edges]) -->
+    label_ref_marker(Name, Label),
     html_edges_(Edges).
 html_edges_(Edges) -->
     non_marker_char(_),
@@ -493,6 +586,17 @@ link_marker(Target, Label) -->
     ">",
     link_body(Label).
 
+label_marker(Name) -->
+    "<publication-label data-label=\"",
+    attr_value(Name),
+    "></publication-label>".
+
+label_ref_marker(Name, Label) -->
+    "<publication-ref data-label=\"",
+    attr_value(Name),
+    ">",
+    label_ref_body(Label).
+
 attr_value([]) --> "\"".
 attr_value([C|Cs]) --> [C], { dif(C, '"') }, attr_value(Cs).
 
@@ -501,6 +605,9 @@ publish_body([C|Cs]) --> [C], { dif(C, '<') }, publish_body(Cs).
 
 link_body([]) --> "</publication-link>".
 link_body([C|Cs]) --> [C], { dif(C, '<') }, link_body(Cs).
+
+label_ref_body([]) --> "</publication-ref>".
+label_ref_body([C|Cs]) --> [C], { dif(C, '<') }, label_ref_body(Cs).
 
 non_marker_char(C) -->
     [C],

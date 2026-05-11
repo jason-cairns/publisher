@@ -44,8 +44,11 @@ Concretely:
 - ownership edges with owner ∈ R must have target ∈ C (else: build error)
 - reference edges with source ∈ R must have target ∈ R (else: build
   error)
+- label references with source ∈ R must target labels defined in R (else:
+  build error)
 - ownership edges with owner ∉ R are ignored
 - reference edges with source ∉ R are ignored
+- labels and label references with source ∉ R are ignored
 
 The underscore prefix (`_*.typ`) remains a discovery convention used by
 the build to avoid compiling obvious helper files. It is not load-bearing
@@ -59,6 +62,8 @@ Positive:
 - drafts and sketches can sit in `src/` without forcing build errors
 - typos in ownership edges (`#publish` or `#entry` to a missing target)
   still error cleanly when the author is in the rendered set
+- labels in unpublished drafts cannot satisfy references from the rendered
+  set or force those drafts into the rendered set
 - the underscore convention can be relaxed or extended without changing
   publication semantics
 

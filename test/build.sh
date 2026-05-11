@@ -45,6 +45,8 @@ fi
 grep -q '<body>' build/html/index.html
 grep -q '<publication-publish data-target="writing.typ">Writing</publication-publish>' build/html/index.html
 grep -q '<publication-entry data-target="colophon.typ"></publication-entry>' build/html/index.html
+grep -q '<publication-label data-label="root-note"></publication-label>' build/html/index.html
+grep -q '<publication-ref data-label="foo-note">foo note</publication-ref>' build/html/index.html
 
 # Final HTML wraps publication body in site chrome and resolves links to routes.
 grep -q '<main>' public/index.html
@@ -65,6 +67,14 @@ grep -q '<a href="/posts/foo/">Foo</a>' public/writing/index.html
 grep -q '<a href="/writing/">Writing</a>' public/posts/foo/index.html
 grep -q '<a href="/thesis/">Thesis</a>' public/thesis/chapter/index.html
 grep -q '<a href="/">home</a>' public/colophon/index.html
+
+# Site-global label references resolve to stable fragments. Same-publication
+# references use local fragments; cross-publication references include routes.
+grep -q '<span id="root-note"></span>' public/index.html
+grep -q '<a href="#root-note">root note</a>' public/index.html
+grep -q '<span id="foo-note"></span>' public/posts/foo/index.html
+grep -q '<a href="#foo-note">own note</a>' public/posts/foo/index.html
+grep -q '<a href="/posts/foo/#foo-note">foo note</a>' public/index.html
 
 # Markers are an internal protocol; they must not leak into final HTML.
 if grep -R -q '<publication-' public; then
@@ -184,6 +194,38 @@ printf '<!DOCTYPE html><html><body><h2>Colophon</h2><p><publication-link data-ta
 
 if scryer-prolog site.pl -- src "$tmp/missing-link/html" "$tmp/missing-link/public" "$tmp/missing-link/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ >/dev/null 2>&1; then
   echo 'reference edges from rendered publications must point to known rendered sources' >&2
+  exit 1
+fi
+
+# Fixture: rendered labels are site-global and must be unique.
+mkdir -p "$tmp/duplicate-label/html" "$tmp/duplicate-label/public"
+cp -R build/html/. "$tmp/duplicate-label/html/"
+printf '<publication-label data-label="root-note"></publication-label>' >> "$tmp/duplicate-label/html/colophon.html"
+
+if scryer-prolog site.pl -- src "$tmp/duplicate-label/html" "$tmp/duplicate-label/public" "$tmp/duplicate-label/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ >/dev/null 2>&1; then
+  echo 'duplicate rendered site-global publication labels must fail validation' >&2
+  exit 1
+fi
+
+# Fixture: label references close over rendered labels only. A label in an
+# unowned candidate must not become routable or publish that candidate.
+mkdir -p "$tmp/dangling-label/html" "$tmp/dangling-label/public"
+cp -R build/html/. "$tmp/dangling-label/html/"
+printf '<!DOCTYPE html><html><body><h2>Orphan</h2><publication-label data-label="orphan-note"></publication-label></body></html>' > "$tmp/dangling-label/html/orphan.html"
+printf '<publication-ref data-label="orphan-note">orphan note</publication-ref>' >> "$tmp/dangling-label/html/index.html"
+
+if scryer-prolog site.pl -- src "$tmp/dangling-label/html" "$tmp/dangling-label/public" "$tmp/dangling-label/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ orphan.typ >/dev/null 2>&1; then
+  echo 'label references must point to labels in rendered publications' >&2
+  exit 1
+fi
+
+# Fixture: missing site-global labels fail the transform.
+mkdir -p "$tmp/missing-label/html" "$tmp/missing-label/public"
+cp -R build/html/. "$tmp/missing-label/html/"
+printf '<publication-ref data-label="missing-note">Missing</publication-ref>' >> "$tmp/missing-label/html/index.html"
+
+if scryer-prolog site.pl -- src "$tmp/missing-label/html" "$tmp/missing-label/public" "$tmp/missing-label/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ >/dev/null 2>&1; then
+  echo 'missing site-global publication labels must fail validation' >&2
   exit 1
 fi
 
