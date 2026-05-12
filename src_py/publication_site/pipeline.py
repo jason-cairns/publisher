@@ -377,7 +377,7 @@ def _site_page(root: str, title: str, nav_html: str, body: str) -> str:
         "  <head>\n"
         '    <meta charset="utf-8">\n'
         '    <meta name="viewport" content="width=device-width, initial-scale=1">\n'
-        f"    <title>{title} - cair.nz</title>\n"
+        f"    <title>{escape(title)} - cair.nz</title>\n"
         "  </head>\n"
         "  <body>\n"
         f'    <header><a href="{_route_href(root, root)}">cair.nz</a></header>\n'
@@ -403,9 +403,15 @@ def _navigation_html(
         if item.owner in rendered_set and item.target in rendered_set:
             index_by_owner.setdefault(item.owner, []).append(item)
 
+    rendered_ownership_edges = [
+        edge
+        for edge in ownership_edges
+        if edge.owner in rendered_set and edge.target in rendered_set
+    ]
+
     return "".join(
         _publication_index_html(root, source, items)
-        for owner in _ownership_path(root, source, ownership_edges)
+        for owner in _ownership_path(root, source, rendered_ownership_edges)
         if (items := index_by_owner.get(owner))
     )
 
