@@ -109,14 +109,16 @@ HTML plus the unified PDF (`public/site.pdf`).
 The contract between Typst (`src/_publication.typ`) and the transformer
 (`site.pl`). Markers are semantic HTML elements emitted into intermediate
 HTML and consumed by the transformer.
+The transformer reserves only the `publication-graph-` marker prefix;
+other `publication-*` elements remain ordinary authored HTML.
 
 | Marker | Edge produced | Authored as |
 | --- | --- | --- |
-| `<publication-publish data-target="T">Label</publication-publish>` | ownership edge `(u, T, publish, "Label")` | `#publish("T")[Label]` |
-| `<publication-entry data-target="T"></publication-entry>` | ownership edge `(u, T, entry, "")` | `#entry("T")` |
-| `<publication-link data-target="T">Label</publication-link>` | reference edge `(u, T, "Label")` | `#publication-link("T")[Label]` |
-| `<publication-label data-label="A"></publication-label>` | label definition `(u, A)` | `#publication-label(<A>)` |
-| `<publication-ref data-label="A">Label</publication-ref>` | label reference `(u, A, "Label")` | `#publication-ref(<A>)[Label]` |
+| `<publication-graph-publish data-target="T">Label</publication-graph-publish>` | ownership edge `(u, T, publish, "Label")` | `#publish("T")[Label]` |
+| `<publication-graph-entry data-target="T"></publication-graph-entry>` | ownership edge `(u, T, entry, "")` | `#entry("T")` |
+| `<publication-graph-link data-target="T">Label</publication-graph-link>` | reference edge `(u, T, "Label")` | `#publication-link("T")[Label]` |
+| `<publication-graph-label data-label="A"></publication-graph-label>` | label definition `(u, A)` | `#publication-label(<A>)` |
+| `<publication-graph-ref data-label="A">Label</publication-graph-ref>` | label reference `(u, A, "Label")` | `#publication-ref(<A>)[Label]` |
 
 Where `u` is the source containing the marker, `T` is the target source,
 and `A` is a site-global label name.

@@ -20,7 +20,7 @@
 
 #let publish(dest, body) = context {
   if html_export {
-    html.elem("publication-publish", attrs: ("data-target": dest), body)
+    html.elem("publication-graph-publish", attrs: ("data-target": dest), body)
   } else {
     publication_target_link(dest, body)
   }
@@ -28,13 +28,13 @@
 
 #let entry(dest) = context {
   if html_export {
-    html.elem("publication-entry", attrs: ("data-target": dest))
+    html.elem("publication-graph-entry", attrs: ("data-target": dest))
   }
 }
 
 #let publication-link(dest, body) = context {
   if html_export {
-    html.elem("publication-link", attrs: ("data-target": dest), body)
+    html.elem("publication-graph-link", attrs: ("data-target": dest), body)
   } else {
     publication_target_link(dest, body)
   }
@@ -42,7 +42,7 @@
 
 #let publication-label(dest) = context {
   if html_export {
-    html.elem("publication-label", attrs: ("data-label": str(dest)))
+    html.elem("publication-graph-label", attrs: ("data-label": str(dest)))
   } else [
     metadata(none) #dest
   ]
@@ -50,7 +50,7 @@
 
 #let publication-ref(dest, body) = context {
   if html_export {
-    html.elem("publication-ref", attrs: ("data-label": str(dest)), body)
+    html.elem("publication-graph-ref", attrs: ("data-label": str(dest)), body)
   } else {
     publication_label_link(dest, body)
   }

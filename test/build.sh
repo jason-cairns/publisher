@@ -62,10 +62,10 @@ ${TYPST:?TYPST is required} compile --root . "$pdf_path_tmp/nested/site.typ" "$p
 
 # Intermediate HTML carries the marker protocol verbatim.
 grep -q '<body>' build/html/index.html
-grep -q '<publication-publish data-target="writing.typ">Writing</publication-publish>' build/html/index.html
-grep -q '<publication-entry data-target="colophon.typ"></publication-entry>' build/html/index.html
-grep -q '<publication-label data-label="root-note"></publication-label>' build/html/index.html
-grep -q '<publication-ref data-label="foo-note">foo note</publication-ref>' build/html/index.html
+grep -q '<publication-graph-publish data-target="writing.typ">Writing</publication-graph-publish>' build/html/index.html
+grep -q '<publication-graph-entry data-target="colophon.typ"></publication-graph-entry>' build/html/index.html
+grep -q '<publication-graph-label data-label="root-note"></publication-graph-label>' build/html/index.html
+grep -q '<publication-graph-ref data-label="foo-note">foo note</publication-graph-ref>' build/html/index.html
 
 # Final HTML wraps publication body in site chrome and resolves links to routes.
 grep -q '<main>' public/index.html
@@ -96,7 +96,7 @@ grep -q '<a href="#foo-note">own note</a>' public/posts/foo/index.html
 grep -q '<a href="/posts/foo/#foo-note">foo note</a>' public/index.html
 
 # Markers are an internal protocol; they must not leak into final HTML.
-if grep -R -q '<publication-' public; then
+if grep -R -q '<publication-graph-' public; then
   echo 'public HTML must not include internal publication markers' >&2
   exit 1
 fi
@@ -184,7 +184,7 @@ fi
 # Constraint: ownership edges from rendered publications must resolve.
 mkdir -p "$tmp/dangling-target/html" "$tmp/dangling-target/public"
 cp -R build/html/. "$tmp/dangling-target/html/"
-printf '<!DOCTYPE html><html><body><h2>Index</h2><publication-publish data-target="writing.typ">Writing</publication-publish><publication-entry data-target="missing.typ"></publication-entry></body></html>' > "$tmp/dangling-target/html/index.html"
+printf '<!DOCTYPE html><html><body><h2>Index</h2><publication-graph-publish data-target="writing.typ">Writing</publication-graph-publish><publication-graph-entry data-target="missing.typ"></publication-graph-entry></body></html>' > "$tmp/dangling-target/html/index.html"
 
 if scryer-prolog site.pl -- src "$tmp/dangling-target/html" "$tmp/dangling-target/public" "$tmp/dangling-target/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ >/dev/null 2>&1; then
   echo 'ownership edges from rendered publications must point to known sources' >&2
@@ -198,7 +198,7 @@ fi
 mkdir -p "$tmp/dangling-link/html" "$tmp/dangling-link/public"
 cp -R build/html/. "$tmp/dangling-link/html/"
 printf '<!DOCTYPE html><html><body><h2>Orphan</h2></body></html>' > "$tmp/dangling-link/html/orphan.html"
-printf '<!DOCTYPE html><html><body><h2>Colophon</h2><p><publication-link data-target="orphan.typ">Orphan</publication-link></p></body></html>' > "$tmp/dangling-link/html/colophon.html"
+printf '<!DOCTYPE html><html><body><h2>Colophon</h2><p><publication-graph-link data-target="orphan.typ">Orphan</publication-graph-link></p></body></html>' > "$tmp/dangling-link/html/colophon.html"
 
 if scryer-prolog site.pl -- src "$tmp/dangling-link/html" "$tmp/dangling-link/public" "$tmp/dangling-link/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ orphan.typ >/dev/null 2>&1; then
   echo 'reference edges from rendered publications must point into the rendered set' >&2
@@ -209,7 +209,7 @@ fi
 # Constraint: broken local publication links must fail the transform.
 mkdir -p "$tmp/missing-link/html" "$tmp/missing-link/public"
 cp -R build/html/. "$tmp/missing-link/html/"
-printf '<!DOCTYPE html><html><body><h2>Colophon</h2><p><publication-link data-target="missing.typ">Missing</publication-link></p></body></html>' > "$tmp/missing-link/html/colophon.html"
+printf '<!DOCTYPE html><html><body><h2>Colophon</h2><p><publication-graph-link data-target="missing.typ">Missing</publication-graph-link></p></body></html>' > "$tmp/missing-link/html/colophon.html"
 
 if scryer-prolog site.pl -- src "$tmp/missing-link/html" "$tmp/missing-link/public" "$tmp/missing-link/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ >/dev/null 2>&1; then
   echo 'reference edges from rendered publications must point to known rendered sources' >&2
@@ -219,7 +219,7 @@ fi
 # Fixture: rendered labels are site-global and must be unique.
 mkdir -p "$tmp/duplicate-label/html" "$tmp/duplicate-label/public"
 cp -R build/html/. "$tmp/duplicate-label/html/"
-printf '<publication-label data-label="root-note"></publication-label>' >> "$tmp/duplicate-label/html/colophon.html"
+printf '<publication-graph-label data-label="root-note"></publication-graph-label>' >> "$tmp/duplicate-label/html/colophon.html"
 
 if scryer-prolog site.pl -- src "$tmp/duplicate-label/html" "$tmp/duplicate-label/public" "$tmp/duplicate-label/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ >/dev/null 2>&1; then
   echo 'duplicate rendered site-global publication labels must fail validation' >&2
@@ -230,8 +230,8 @@ fi
 # unowned candidate must not become routable or publish that candidate.
 mkdir -p "$tmp/dangling-label/html" "$tmp/dangling-label/public"
 cp -R build/html/. "$tmp/dangling-label/html/"
-printf '<!DOCTYPE html><html><body><h2>Orphan</h2><publication-label data-label="orphan-note"></publication-label></body></html>' > "$tmp/dangling-label/html/orphan.html"
-printf '<publication-ref data-label="orphan-note">orphan note</publication-ref>' >> "$tmp/dangling-label/html/index.html"
+printf '<!DOCTYPE html><html><body><h2>Orphan</h2><publication-graph-label data-label="orphan-note"></publication-graph-label></body></html>' > "$tmp/dangling-label/html/orphan.html"
+printf '<publication-graph-ref data-label="orphan-note">orphan note</publication-graph-ref>' >> "$tmp/dangling-label/html/index.html"
 
 if scryer-prolog site.pl -- src "$tmp/dangling-label/html" "$tmp/dangling-label/public" "$tmp/dangling-label/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ orphan.typ >/dev/null 2>&1; then
   echo 'label references must point to labels in rendered publications' >&2
@@ -241,7 +241,7 @@ fi
 # Fixture: missing site-global labels fail the transform.
 mkdir -p "$tmp/missing-label/html" "$tmp/missing-label/public"
 cp -R build/html/. "$tmp/missing-label/html/"
-printf '<publication-ref data-label="missing-note">Missing</publication-ref>' >> "$tmp/missing-label/html/index.html"
+printf '<publication-graph-ref data-label="missing-note">Missing</publication-graph-ref>' >> "$tmp/missing-label/html/index.html"
 
 if scryer-prolog site.pl -- src "$tmp/missing-label/html" "$tmp/missing-label/public" "$tmp/missing-label/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ >/dev/null 2>&1; then
   echo 'missing site-global publication labels must fail validation' >&2
@@ -263,7 +263,16 @@ grep -q '<h2><em>Intro</em></h2>' "$tmp/inline-heading/public/index.html"
 # Constraint: every publication except the root has exactly one owner.
 mkdir -p "$tmp/multi-owner/html" "$tmp/multi-owner/public/posts/foo"
 cp -R build/html/. "$tmp/multi-owner/html/"
-printf '<publication-publish data-target="posts/foo.typ">Foo</publication-publish>' >> "$tmp/multi-owner/html/index.html"
+printf '<publication-graph-publish data-target="posts/foo.typ">Foo</publication-graph-publish>' >> "$tmp/multi-owner/html/index.html"
+
+# Fixture: authored HTML elements may use the generic publication-* namespace
+# without being mistaken for internal protocol markers.
+mkdir -p "$tmp/authored-publication-element/html" "$tmp/authored-publication-element/public"
+printf '<!DOCTYPE html><html><body><h2>Index</h2><publication-note>Keep me.</publication-note></body></html>' > "$tmp/authored-publication-element/html/index.html"
+
+scryer-prolog site.pl -- src "$tmp/authored-publication-element/html" "$tmp/authored-publication-element/public" "$tmp/authored-publication-element/site.typ" index.typ index.typ
+
+grep -q '<publication-note>Keep me.</publication-note>' "$tmp/authored-publication-element/public/index.html"
 
 if scryer-prolog site.pl -- src "$tmp/multi-owner/html" "$tmp/multi-owner/public" "$tmp/multi-owner/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ >/dev/null 2>&1; then
   echo 'publications with multiple owners must fail ownership validation' >&2
@@ -273,8 +282,8 @@ fi
 # Fixture: the root publication is configurable, not hard-coded to index.typ.
 # Constraint: any source can serve as the root; route resolution adapts.
 mkdir -p "$tmp/alternate-root/html" "$tmp/alternate-root/public/index"
-printf '<!DOCTYPE html><html><body><publication-publish data-target="index.typ">Home</publication-publish><p><publication-link data-target="index.typ">Home</publication-link></p></body></html>' > "$tmp/alternate-root/html/writing.html"
-printf '<!DOCTYPE html><html><body><p><publication-link data-target="writing.typ">Root</publication-link></p></body></html>' > "$tmp/alternate-root/html/index.html"
+printf '<!DOCTYPE html><html><body><publication-graph-publish data-target="index.typ">Home</publication-graph-publish><p><publication-graph-link data-target="index.typ">Home</publication-graph-link></p></body></html>' > "$tmp/alternate-root/html/writing.html"
+printf '<!DOCTYPE html><html><body><p><publication-graph-link data-target="writing.typ">Root</publication-graph-link></p></body></html>' > "$tmp/alternate-root/html/index.html"
 
 scryer-prolog site.pl -- src "$tmp/alternate-root/html" "$tmp/alternate-root/public" "$tmp/alternate-root/site.typ" writing.typ writing.typ index.typ
 
