@@ -8,6 +8,7 @@ from pathlib import Path
 import shutil
 
 import networkx as nx
+from lxml import etree
 from lxml import html
 
 from .typst_compile import compile_typst_html, compile_typst_pdf
@@ -366,28 +367,72 @@ def _body_html(document: html.HtmlElement) -> str:
 
 
 def _site_page(root: str, title: str, nav_html: str, body: str) -> str:
-    if nav_html == "":
-        body_html = f"      {body}\n"
-    else:
-        body_html = f"\n    {body}\n\n"
+    document = _site_page_document(root, title, nav_html, body)
+    page_body = document.find("body")
+    head = document.find("head")
+    header = page_body.find("header")
+    main = page_body.find("main")
+    navs = page_body.xpath("./nav")
 
     return (
         "<!doctype html>\n"
         '<html lang="en">\n'
         "  <head>\n"
-        '    <meta charset="utf-8">\n'
-        '    <meta name="viewport" content="width=device-width, initial-scale=1">\n'
-        f"    <title>{escape(title)} - cair.nz</title>\n"
+        + "".join(f"    {_element_html(child)}\n" for child in head)
+        +
         "  </head>\n"
         "  <body>\n"
-        f'    <header><a href="{_route_href(root, root)}">cair.nz</a></header>\n'
-        f"{nav_html}"
+        f"    {_element_html(header)}\n"
+        + "".join(f"{_indent_first_line(_element_html(nav), '    ')}\n" for nav in navs)
+        +
         "    <main>\n"
-        f"{body_html}"
+        f"{_main_html(main, bool(navs))}"
         "    </main>\n"
         "  </body>\n"
         "</html>\n"
     )
+
+
+def _site_page_document(root: str, title: str, nav_html: str, body: str) -> html.HtmlElement:
+    document = html.Element("html")
+    document.set("lang", "en")
+
+    head = etree.SubElement(document, "head")
+    etree.SubElement(head, "meta", charset="utf-8")
+    etree.SubElement(head, "meta", name="viewport", content="width=device-width, initial-scale=1")
+    title_element = etree.SubElement(head, "title")
+    title_element.text = f"{title} - cair.nz"
+
+    page_body = etree.SubElement(document, "body")
+    header = etree.SubElement(page_body, "header")
+    home_link = etree.SubElement(header, "a", href=_route_href(root, root))
+    home_link.text = "cair.nz"
+
+    for nav in html.fragments_fromstring(nav_html):
+        page_body.append(nav)
+
+    main = etree.SubElement(page_body, "main")
+    for child in html.fragments_fromstring(body):
+        main.append(child)
+
+    return document
+
+
+def _element_html(element: html.HtmlElement) -> str:
+    return html.tostring(element, encoding="unicode", with_tail=False)
+
+
+def _indent_first_line(value: str, prefix: str) -> str:
+    lines = value.splitlines()
+    lines[0] = f"{prefix}{lines[0]}"
+    return "\n".join(lines)
+
+
+def _main_html(main: html.HtmlElement, has_nav: bool) -> str:
+    body = "".join(html.tostring(child, encoding="unicode", with_tail=True) for child in main)
+    if has_nav:
+        return f"\n    {body}\n\n"
+    return f"      {body}\n"
 
 
 def _navigation_html(

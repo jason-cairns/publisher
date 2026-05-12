@@ -60,6 +60,43 @@ def test_transform_writes_root_html_and_pdf_assembly(tmp_path):
     )
 
 
+def test_transform_serializes_page_title_entities(tmp_path):
+    src_dir = tmp_path / "src"
+    html_dir = tmp_path / "build" / "html"
+    out_dir = tmp_path / "public"
+    pdf_typ = tmp_path / "build" / "site.typ"
+
+    src_dir.mkdir()
+    html_dir.mkdir(parents=True)
+    (src_dir / "_publication.typ").write_text("", encoding="utf-8")
+    (html_dir / "index.html").write_text(
+        "<!DOCTYPE html><html><body><h1>AT&amp;T &lt;Site&gt;</h1></body></html>",
+        encoding="utf-8",
+    )
+
+    result = main(
+        [
+            "transform",
+            "--src",
+            str(src_dir),
+            "--html",
+            str(html_dir),
+            "--out",
+            str(out_dir),
+            "--pdf-typ",
+            str(pdf_typ),
+            "--root",
+            "index.typ",
+            "index.typ",
+        ]
+    )
+
+    assert result == 0
+    assert "<title>AT&amp;T &lt;Site&gt; - cair.nz</title>" in (out_dir / "index.html").read_text(
+        encoding="utf-8"
+    )
+
+
 def test_transform_escapes_decoded_title_text(tmp_path):
     src_dir = tmp_path / "src"
     html_dir = tmp_path / "build" / "html"
