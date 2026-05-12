@@ -18,6 +18,14 @@
 - Interact with GitHub using the connector.
 - After creating a branch with the GitHub connector, fetch that branch ref before switching locally, for example `git fetch origin branch-name:refs/remotes/origin/branch-name` then `git switch --track -c branch-name origin/branch-name`.
 - Treat `docs/PRD.md` as important product and architecture context before implementation.
+
+## Python style
+
+- Keep Python small, direct, typed where it clarifies the boundary, and boring.
+- Prefer standard-library dataclasses, pathlib, and explicit functions over framework-style indirection.
+- Use pytest fixtures for shared test setup; keep assertions close to the behavior under test.
+- Build HTML with lxml elements and Python escaping helpers, not ad hoc string interpolation for user-authored content.
+
 ## Agent skills
 
 ### Issue tracker
