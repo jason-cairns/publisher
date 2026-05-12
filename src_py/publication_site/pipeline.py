@@ -2,15 +2,43 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass
+from html import escape
 import os
 from pathlib import Path
+import shutil
 
 import networkx as nx
 from lxml import html
 
+from .typst_compile import compile_typst_html, compile_typst_pdf
 
-def build_site(*_args: object, **_kwargs: object) -> None:
-    raise NotImplementedError("site build is not implemented yet")
+
+def build_site(
+    src_dir: Path,
+    html_dir: Path,
+    out_dir: Path,
+    pdf_typ: Path,
+    pdf_out: Path,
+    root: str,
+) -> None:
+    sources = _publication_sources(src_dir)
+    shutil.rmtree(html_dir, ignore_errors=True)
+    shutil.rmtree(out_dir, ignore_errors=True)
+
+    for source in sources:
+        html_path = _html_path(html_dir, source)
+        html_path.parent.mkdir(parents=True, exist_ok=True)
+        html_path.write_text(
+            compile_typst_html(
+                src_dir / source,
+                root=src_dir,
+                sys_inputs={"render-target": "html"},
+            ),
+            encoding="utf-8",
+        )
+
+    transform_site(src_dir, html_dir, out_dir, pdf_typ, root, sources)
+    compile_typst_pdf(pdf_typ, pdf_out, root=_compile_root(src_dir, pdf_typ, pdf_out))
 
 
 def transform_site(
@@ -29,6 +57,11 @@ def transform_site(
         edge
         for source, document in documents.items()
         for edge in _ownership_edges(source, document)
+    ]
+    publication_indices = [
+        item
+        for source, document in documents.items()
+        for item in _publication_index_items(source, document)
     ]
     link_edges = [
         edge
@@ -52,12 +85,25 @@ def transform_site(
         document = documents[source]
         _rewrite_markers(document, root, source, label_sources)
         title = _title(document, source)
+        nav_html = _navigation_html(root, source, rendered, ownership_edges, publication_indices)
         out_path = _public_path(out_dir, root, source)
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(_site_page(root, title, _body_html(document)), encoding="utf-8")
+        out_path.write_text(_site_page(root, title, nav_html, _body_html(document)), encoding="utf-8")
 
     pdf_typ.parent.mkdir(parents=True, exist_ok=True)
     pdf_typ.write_text(_pdf_typ(src_dir, pdf_typ, rendered), encoding="utf-8")
+
+
+def _publication_sources(src_dir: Path) -> list[str]:
+    return [
+        source.relative_to(src_dir).as_posix()
+        for source in sorted(src_dir.rglob("*.typ"))
+        if not source.name.startswith("_")
+    ]
+
+
+def _compile_root(*paths: Path) -> Path:
+    return Path(os.path.commonpath([path.resolve() for path in paths]))
 
 
 @dataclass(frozen=True)
@@ -70,6 +116,13 @@ class OwnershipEdge:
 class LinkEdge:
     source: str
     target: str
+
+
+@dataclass(frozen=True)
+class PublicationIndexItem:
+    owner: str
+    target: str
+    title: str
 
 
 @dataclass(frozen=True)
@@ -111,6 +164,15 @@ def _ownership_edges(source: str, document: html.HtmlElement) -> list[OwnershipE
     markers = document.xpath("//publication-graph-publish | //publication-graph-entry")
     return [
         OwnershipEdge(source, target)
+        for marker in markers
+        if (target := marker.get("data-target")) is not None
+    ]
+
+
+def _publication_index_items(source: str, document: html.HtmlElement) -> list[PublicationIndexItem]:
+    markers = document.xpath("//publication-graph-publish")
+    return [
+        PublicationIndexItem(source, target, marker.text_content())
         for marker in markers
         if (target := marker.get("data-target")) is not None
     ]
@@ -211,7 +273,10 @@ def _rewrite_markers(
     source: str,
     label_sources: dict[str, str],
 ) -> None:
-    for marker in document.xpath("//publication-graph-publish | //publication-graph-link"):
+    for marker in document.xpath("//publication-graph-publish"):
+        _remove_element(marker)
+
+    for marker in document.xpath("//publication-graph-link"):
         target = marker.get("data-target")
         if target is None:
             _remove_element(marker)
@@ -296,10 +361,16 @@ def _body_html(document: html.HtmlElement) -> str:
     body = document.find("body")
     if body is None:
         return ""
-    return "".join(html.tostring(child, encoding="unicode") for child in body).strip()
+    raw = "".join(html.tostring(child, encoding="unicode") for child in body).strip()
+    return "\n".join("" if line.strip() == "" else line for line in raw.splitlines())
 
 
-def _site_page(root: str, title: str, body: str) -> str:
+def _site_page(root: str, title: str, nav_html: str, body: str) -> str:
+    if nav_html == "":
+        body_html = f"      {body}\n"
+    else:
+        body_html = f"\n    {body}\n\n"
+
     return (
         "<!doctype html>\n"
         '<html lang="en">\n'
@@ -310,12 +381,54 @@ def _site_page(root: str, title: str, body: str) -> str:
         "  </head>\n"
         "  <body>\n"
         f'    <header><a href="{_route_href(root, root)}">cair.nz</a></header>\n'
+        f"{nav_html}"
         "    <main>\n"
-        f"      {body}\n"
+        f"{body_html}"
         "    </main>\n"
         "  </body>\n"
         "</html>\n"
     )
+
+
+def _navigation_html(
+    root: str,
+    source: str,
+    rendered: list[str],
+    ownership_edges: list[OwnershipEdge],
+    publication_indices: list[PublicationIndexItem],
+) -> str:
+    rendered_set = set(rendered)
+    index_by_owner: dict[str, list[PublicationIndexItem]] = {}
+    for item in publication_indices:
+        if item.owner in rendered_set and item.target in rendered_set:
+            index_by_owner.setdefault(item.owner, []).append(item)
+
+    return "".join(
+        _publication_index_html(root, source, items)
+        for owner in _ownership_path(root, source, ownership_edges)
+        if (items := index_by_owner.get(owner))
+    )
+
+
+def _ownership_path(root: str, source: str, ownership_edges: list[OwnershipEdge]) -> list[str]:
+    owner_by_target = {edge.target: edge.owner for edge in ownership_edges}
+    path = [source]
+    while path[-1] != root:
+        path.append(owner_by_target[path[-1]])
+    return list(reversed(path))
+
+
+def _publication_index_html(root: str, source: str, items: list[PublicationIndexItem]) -> str:
+    links = "".join(
+        _publication_index_item_html(root, source, item)
+        for item in items
+    )
+    return "    <nav>\n" "      <ul>\n" f"{links}" "      </ul>\n" "    </nav>\n"
+
+
+def _publication_index_item_html(root: str, source: str, item: PublicationIndexItem) -> str:
+    current = ' aria-current="page"' if item.target == source else ""
+    return f'        <li><a href="{_route_href(root, item.target)}"{current}>{escape(item.title)}</a></li>\n'
 
 
 def _route_href(root: str, source: str) -> str:

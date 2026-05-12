@@ -54,7 +54,7 @@ mkdir -p "$pdf_path_tmp/html" \
 cp -R build/html/. "$pdf_path_tmp/html/"
 
 abs_src_dir="$(pwd -P)/src"
-scryer-prolog site.pl -- "$abs_src_dir" "$pdf_path_tmp/html" "$pdf_path_tmp/public" "$pdf_path_tmp/nested/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis.typ thesis/chapter.typ writing.typ
+uv run site transform --src "$abs_src_dir" --html "$pdf_path_tmp/html" --out "$pdf_path_tmp/public" --pdf-typ "$pdf_path_tmp/nested/site.typ" --root index.typ colophon.typ index.typ posts/foo.typ thesis.typ thesis/chapter.typ writing.typ
 
 grep -q '#import "../../../src/_publication.typ": publication' "$pdf_path_tmp/nested/site.typ"
 grep -q '#include "../../../src/index.typ"' "$pdf_path_tmp/nested/site.typ"
@@ -159,7 +159,7 @@ mkdir -p "$tmp/unreachable/html" \
 cp -R build/html/. "$tmp/unreachable/html/"
 printf '<!DOCTYPE html><html><body><h2>Orphan</h2></body></html>' > "$tmp/unreachable/html/orphan.html"
 
-scryer-prolog site.pl -- src "$tmp/unreachable/html" "$tmp/unreachable/public" "$tmp/unreachable/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ orphan.typ
+uv run site transform --src src --html "$tmp/unreachable/html" --out "$tmp/unreachable/public" --pdf-typ "$tmp/unreachable/site.typ" --root index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ orphan.typ
 
 test -s "$tmp/unreachable/public/index.html"
 test -s "$tmp/unreachable/public/colophon/index.html"
@@ -186,7 +186,7 @@ mkdir -p "$tmp/dangling-target/html" "$tmp/dangling-target/public"
 cp -R build/html/. "$tmp/dangling-target/html/"
 printf '<!DOCTYPE html><html><body><h2>Index</h2><publication-graph-publish data-target="writing.typ">Writing</publication-graph-publish><publication-graph-entry data-target="missing.typ"></publication-graph-entry></body></html>' > "$tmp/dangling-target/html/index.html"
 
-if scryer-prolog site.pl -- src "$tmp/dangling-target/html" "$tmp/dangling-target/public" "$tmp/dangling-target/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ >/dev/null 2>&1; then
+if uv run site transform --src src --html "$tmp/dangling-target/html" --out "$tmp/dangling-target/public" --pdf-typ "$tmp/dangling-target/site.typ" --root index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ >/dev/null 2>&1; then
   echo 'ownership edges from rendered publications must point to known sources' >&2
   exit 1
 fi
@@ -200,7 +200,7 @@ cp -R build/html/. "$tmp/dangling-link/html/"
 printf '<!DOCTYPE html><html><body><h2>Orphan</h2></body></html>' > "$tmp/dangling-link/html/orphan.html"
 printf '<!DOCTYPE html><html><body><h2>Colophon</h2><p><publication-graph-link data-target="orphan.typ">Orphan</publication-graph-link></p></body></html>' > "$tmp/dangling-link/html/colophon.html"
 
-if scryer-prolog site.pl -- src "$tmp/dangling-link/html" "$tmp/dangling-link/public" "$tmp/dangling-link/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ orphan.typ >/dev/null 2>&1; then
+if uv run site transform --src src --html "$tmp/dangling-link/html" --out "$tmp/dangling-link/public" --pdf-typ "$tmp/dangling-link/site.typ" --root index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ orphan.typ >/dev/null 2>&1; then
   echo 'reference edges from rendered publications must point into the rendered set' >&2
   exit 1
 fi
@@ -211,7 +211,7 @@ mkdir -p "$tmp/missing-link/html" "$tmp/missing-link/public"
 cp -R build/html/. "$tmp/missing-link/html/"
 printf '<!DOCTYPE html><html><body><h2>Colophon</h2><p><publication-graph-link data-target="missing.typ">Missing</publication-graph-link></p></body></html>' > "$tmp/missing-link/html/colophon.html"
 
-if scryer-prolog site.pl -- src "$tmp/missing-link/html" "$tmp/missing-link/public" "$tmp/missing-link/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ >/dev/null 2>&1; then
+if uv run site transform --src src --html "$tmp/missing-link/html" --out "$tmp/missing-link/public" --pdf-typ "$tmp/missing-link/site.typ" --root index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ >/dev/null 2>&1; then
   echo 'reference edges from rendered publications must point to known rendered sources' >&2
   exit 1
 fi
@@ -221,7 +221,7 @@ mkdir -p "$tmp/duplicate-label/html" "$tmp/duplicate-label/public"
 cp -R build/html/. "$tmp/duplicate-label/html/"
 printf '<publication-graph-label data-label="root-note"></publication-graph-label>' >> "$tmp/duplicate-label/html/colophon.html"
 
-if scryer-prolog site.pl -- src "$tmp/duplicate-label/html" "$tmp/duplicate-label/public" "$tmp/duplicate-label/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ >/dev/null 2>&1; then
+if uv run site transform --src src --html "$tmp/duplicate-label/html" --out "$tmp/duplicate-label/public" --pdf-typ "$tmp/duplicate-label/site.typ" --root index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ >/dev/null 2>&1; then
   echo 'duplicate rendered site-global publication labels must fail validation' >&2
   exit 1
 fi
@@ -233,7 +233,7 @@ cp -R build/html/. "$tmp/dangling-label/html/"
 printf '<!DOCTYPE html><html><body><h2>Orphan</h2><publication-graph-label data-label="orphan-note"></publication-graph-label></body></html>' > "$tmp/dangling-label/html/orphan.html"
 printf '<publication-graph-ref data-label="orphan-note">orphan note</publication-graph-ref>' >> "$tmp/dangling-label/html/index.html"
 
-if scryer-prolog site.pl -- src "$tmp/dangling-label/html" "$tmp/dangling-label/public" "$tmp/dangling-label/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ orphan.typ >/dev/null 2>&1; then
+if uv run site transform --src src --html "$tmp/dangling-label/html" --out "$tmp/dangling-label/public" --pdf-typ "$tmp/dangling-label/site.typ" --root index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ orphan.typ >/dev/null 2>&1; then
   echo 'label references must point to labels in rendered publications' >&2
   exit 1
 fi
@@ -243,7 +243,7 @@ mkdir -p "$tmp/missing-label/html" "$tmp/missing-label/public"
 cp -R build/html/. "$tmp/missing-label/html/"
 printf '<publication-graph-ref data-label="missing-note">Missing</publication-graph-ref>' >> "$tmp/missing-label/html/index.html"
 
-if scryer-prolog site.pl -- src "$tmp/missing-label/html" "$tmp/missing-label/public" "$tmp/missing-label/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ >/dev/null 2>&1; then
+if uv run site transform --src src --html "$tmp/missing-label/html" --out "$tmp/missing-label/public" --pdf-typ "$tmp/missing-label/site.typ" --root index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ >/dev/null 2>&1; then
   echo 'missing site-global publication labels must fail validation' >&2
   exit 1
 fi
@@ -254,7 +254,7 @@ fi
 mkdir -p "$tmp/inline-heading/html" "$tmp/inline-heading/public"
 printf '<!DOCTYPE html><html><body><h2><em>Intro</em></h2><p>Body.</p></body></html>' > "$tmp/inline-heading/html/index.html"
 
-scryer-prolog site.pl -- src "$tmp/inline-heading/html" "$tmp/inline-heading/public" "$tmp/inline-heading/site.typ" index.typ index.typ
+uv run site transform --src src --html "$tmp/inline-heading/html" --out "$tmp/inline-heading/public" --pdf-typ "$tmp/inline-heading/site.typ" --root index.typ index.typ
 
 grep -q '<title>Intro - cair.nz</title>' "$tmp/inline-heading/public/index.html"
 grep -q '<h2><em>Intro</em></h2>' "$tmp/inline-heading/public/index.html"
@@ -270,11 +270,11 @@ printf '<publication-graph-publish data-target="posts/foo.typ">Foo</publication-
 mkdir -p "$tmp/authored-publication-element/html" "$tmp/authored-publication-element/public"
 printf '<!DOCTYPE html><html><body><h2>Index</h2><publication-note>Keep me.</publication-note></body></html>' > "$tmp/authored-publication-element/html/index.html"
 
-scryer-prolog site.pl -- src "$tmp/authored-publication-element/html" "$tmp/authored-publication-element/public" "$tmp/authored-publication-element/site.typ" index.typ index.typ
+uv run site transform --src src --html "$tmp/authored-publication-element/html" --out "$tmp/authored-publication-element/public" --pdf-typ "$tmp/authored-publication-element/site.typ" --root index.typ index.typ
 
 grep -q '<publication-note>Keep me.</publication-note>' "$tmp/authored-publication-element/public/index.html"
 
-if scryer-prolog site.pl -- src "$tmp/multi-owner/html" "$tmp/multi-owner/public" "$tmp/multi-owner/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ >/dev/null 2>&1; then
+if uv run site transform --src src --html "$tmp/multi-owner/html" --out "$tmp/multi-owner/public" --pdf-typ "$tmp/multi-owner/site.typ" --root index.typ colophon.typ index.typ posts/foo.typ thesis/chapter.typ thesis.typ writing.typ >/dev/null 2>&1; then
   echo 'publications with multiple owners must fail ownership validation' >&2
   exit 1
 fi
@@ -285,7 +285,7 @@ mkdir -p "$tmp/alternate-root/html" "$tmp/alternate-root/public/index"
 printf '<!DOCTYPE html><html><body><publication-graph-publish data-target="index.typ">Home</publication-graph-publish><p><publication-graph-link data-target="index.typ">Home</publication-graph-link></p></body></html>' > "$tmp/alternate-root/html/writing.html"
 printf '<!DOCTYPE html><html><body><p><publication-graph-link data-target="writing.typ">Root</publication-graph-link></p></body></html>' > "$tmp/alternate-root/html/index.html"
 
-scryer-prolog site.pl -- src "$tmp/alternate-root/html" "$tmp/alternate-root/public" "$tmp/alternate-root/site.typ" writing.typ writing.typ index.typ
+uv run site transform --src src --html "$tmp/alternate-root/html" --out "$tmp/alternate-root/public" --pdf-typ "$tmp/alternate-root/site.typ" --root writing.typ writing.typ index.typ
 
 test -s "$tmp/alternate-root/public/index.html"
 test -s "$tmp/alternate-root/public/index/index.html"
