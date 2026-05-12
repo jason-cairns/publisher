@@ -102,7 +102,7 @@ if grep -R -q '<publication-graph-' public; then
 fi
 
 # Protocol markers are generic and must not be branded to this site.
-if grep -R -q 'cairn[z]' site.pl src test; then
+if grep -R -q 'cairn[z]' src_py src test; then
   echo 'implementation code must not include site-branded protocol names' >&2
   exit 1
 fi
