@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass
 import os
 from pathlib import Path
@@ -31,10 +32,22 @@ def transform_site(
         for source, document in documents.items()
         for edge in _link_edges(source, document)
     ]
+    label_defs = [
+        label_def
+        for source, document in documents.items()
+        for label_def in _label_defs(source, document)
+    ]
+    label_refs = [
+        label_ref
+        for source, document in documents.items()
+        for label_ref in _label_refs(source, document)
+    ]
     rendered = _validated_ownership_preorder(root, sources, ownership_edges, link_edges)
+    label_sources = _validated_label_sources(rendered, label_defs, label_refs)
 
     for source in rendered:
         document = documents[source]
+        _rewrite_markers(document, root, source, label_sources)
         title = _title(document, source)
         out_path = _public_path(out_dir, root, source)
         out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -56,6 +69,18 @@ class LinkEdge:
     target: str
 
 
+@dataclass(frozen=True)
+class LabelDef:
+    source: str
+    label: str
+
+
+@dataclass(frozen=True)
+class LabelRef:
+    source: str
+    label: str
+
+
 def _read_document(html_dir: Path, source: str) -> html.HtmlElement:
     return html.fromstring((_html_path(html_dir, source)).read_text(encoding="utf-8"))
 
@@ -75,6 +100,24 @@ def _link_edges(source: str, document: html.HtmlElement) -> list[LinkEdge]:
         LinkEdge(source, target)
         for marker in markers
         if (target := marker.get("data-target")) is not None
+    ]
+
+
+def _label_defs(source: str, document: html.HtmlElement) -> list[LabelDef]:
+    markers = document.xpath("//publication-graph-label")
+    return [
+        LabelDef(source, label)
+        for marker in markers
+        if (label := marker.get("data-label")) is not None
+    ]
+
+
+def _label_refs(source: str, document: html.HtmlElement) -> list[LabelRef]:
+    markers = document.xpath("//publication-graph-ref")
+    return [
+        LabelRef(source, label)
+        for marker in markers
+        if (label := marker.get("data-label")) is not None
     ]
 
 
@@ -116,6 +159,94 @@ def _validated_ownership_preorder(
             raise ValueError(f"link target {edge.target} is not rendered")
 
     return rendered
+
+
+def _validated_label_sources(
+    rendered: list[str],
+    label_defs: list[LabelDef],
+    label_refs: list[LabelRef],
+) -> dict[str, str]:
+    rendered_set = set(rendered)
+    label_sources: dict[str, str] = {}
+
+    for label_def in label_defs:
+        if label_def.source not in rendered_set:
+            continue
+        if label_def.label in label_sources:
+            raise ValueError(f"duplicate label {label_def.label}")
+        label_sources[label_def.label] = label_def.source
+
+    for label_ref in label_refs:
+        if label_ref.source in rendered_set and label_ref.label not in label_sources:
+            raise ValueError(f"label {label_ref.label} is not rendered")
+
+    return label_sources
+
+
+def _rewrite_markers(
+    document: html.HtmlElement,
+    root: str,
+    source: str,
+    label_sources: dict[str, str],
+) -> None:
+    for marker in document.xpath("//publication-graph-publish | //publication-graph-link"):
+        target = marker.get("data-target")
+        if target is None:
+            _remove_element(marker)
+        else:
+            _replace_with_anchor(marker, _route_href(root, target))
+
+    for marker in document.xpath("//publication-graph-entry"):
+        _remove_element(marker)
+
+    for marker in document.xpath("//publication-graph-label"):
+        label = marker.get("data-label")
+        if label is None:
+            _remove_element(marker)
+        else:
+            span = html.Element("span")
+            span.set("id", label)
+            _replace_element(marker, span)
+
+    for marker in document.xpath("//publication-graph-ref"):
+        label = marker.get("data-label")
+        if label is None:
+            _remove_element(marker)
+            continue
+
+        label_source = label_sources[label]
+        href = f"#{label}" if label_source == source else f"{_route_href(root, label_source)}#{label}"
+        _replace_with_anchor(marker, href)
+
+
+def _replace_with_anchor(marker: html.HtmlElement, href: str) -> None:
+    anchor = html.Element("a")
+    anchor.set("href", href)
+    _copy_children(marker, anchor)
+    _replace_element(marker, anchor)
+
+
+def _copy_children(source: html.HtmlElement, target: html.HtmlElement) -> None:
+    target.text = source.text
+    for child in source:
+        target.append(deepcopy(child))
+
+
+def _replace_element(old: html.HtmlElement, new: html.HtmlElement) -> None:
+    new.tail = old.tail
+    old.getparent().replace(old, new)
+
+
+def _remove_element(element: html.HtmlElement) -> None:
+    parent = element.getparent()
+    tail = element.tail
+    if tail:
+        previous = element.getprevious()
+        if previous is None:
+            parent.text = (parent.text or "") + tail
+        else:
+            previous.tail = (previous.tail or "") + tail
+    parent.remove(element)
 
 
 def _html_path(html_dir: Path, source: str) -> Path:
