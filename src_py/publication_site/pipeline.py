@@ -403,17 +403,22 @@ def _navigation_html(
         if item.owner in rendered_set and item.target in rendered_set:
             index_by_owner.setdefault(item.owner, []).append(item)
 
-    rendered_ownership_edges = [
+    return "".join(
+        _publication_index_html(root, source, items)
+        for owner in _ownership_path(root, source, _rendered_ownership_edges(ownership_edges, rendered_set))
+        if (items := index_by_owner.get(owner))
+    )
+
+
+def _rendered_ownership_edges(
+    ownership_edges: list[OwnershipEdge],
+    rendered_set: set[str],
+) -> list[OwnershipEdge]:
+    return [
         edge
         for edge in ownership_edges
         if edge.owner in rendered_set and edge.target in rendered_set
     ]
-
-    return "".join(
-        _publication_index_html(root, source, items)
-        for owner in _ownership_path(root, source, rendered_ownership_edges)
-        if (items := index_by_owner.get(owner))
-    )
 
 
 def _ownership_path(root: str, source: str, ownership_edges: list[OwnershipEdge]) -> list[str]:
