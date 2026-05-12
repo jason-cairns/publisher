@@ -26,21 +26,24 @@ Pipeline:
 ```text
 .typ
   -> typst html
-  -> prolog transform
+  -> python cli transform
   -> final site html
 ```
 
-Scryer Prolog operates only on generated HTML.
+The Python CLI operates only on generated HTML during transformation.
 
-The Prolog transformer is responsible for:
+The transformer is responsible for:
 - route mapping for the owned publication set
 - ownership graph validation
 - publication index synthesis from Typst-emitted markers
 - internal link rewriting
 - site chrome injection
 - HTML normalization
+- generated Typst PDF assembly source
 
 The transformer does not parse Typst source.
+HTML fixtures can exercise the transform directly without invoking Typst.
+`make` remains a thin build wrapper around the CLI.
 
 ## Consequences
 

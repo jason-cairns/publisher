@@ -11,8 +11,8 @@ The immediate problem is to prove the publishing primitive before style, recomme
 Build a minimal static publishing pipeline:
 
 1. Typst compiles standalone publications to intermediate HTML.
-2. Typst compiles the site to a unified PDF.
-3. Scryer Prolog transforms intermediate HTML into final site HTML.
+2. The Python CLI transforms intermediate HTML into final site HTML and a generated Typst PDF assembly source.
+3. Typst compiles the generated assembly source to a unified PDF.
 
 Publications are discovered from explicit Typst ownership edges. A publication
 owns child publications through `#publish` and `#entry`. Filesystem paths map
@@ -29,17 +29,19 @@ Authors can define site-global publication labels with
 edges: they do not create ownership, publication-index context, publication
 inclusion, or PDF ordering.
 
-The Prolog transformer accepts input and output directories at runtime. It does not parse Typst source.
+The Python transformer accepts input and output directories at runtime. It does not parse Typst source.
 The transformer also writes the generated Typst assembly source for the
 unified PDF from the same ownership-derived rendered set used for final HTML.
+`make` is build orchestration only: it delegates to `uv run site build` and
+keeps the CLI as the public interface.
 
 ## User Stories
 
 1. As Jason, I want to author the site in Typst, so that HTML and PDF share a source of truth.
 2. As Jason, I want each routable page to be a standalone Typst publication, so that pages remain independently understandable.
 3. As Jason, I want Typst to produce intermediate HTML, so that the project does not need a custom renderer.
-4. As Jason, I want Scryer Prolog to transform generated HTML, so that the site assembler stays small and testable.
-5. As Jason, I want Prolog to accept input and output directories, so that it is not tied to one repository layout.
+4. As Jason, I want a small Python CLI to transform generated HTML, so that the site assembler stays small and testable.
+5. As Jason, I want the transformer to accept input and output directories, so that it is not tied to one repository layout.
 6. As Jason, I want Typst-authored ownership edges to define publication structure, so that ownership is explicit without a metadata registry.
 7. As Jason, I want filesystem paths to map owned publications to routes, so that there is no route registry.
 8. As Jason, I want root `#publish` declarations to form the site-level publication index, so that indexed ownership is explicit in Typst.
@@ -56,9 +58,9 @@ unified PDF from the same ownership-derived rendered set used for final HTML.
 
 - Typst is canonical.
 - Typst-generated HTML is intermediate.
-- Scryer Prolog transforms HTML only.
-- Prolog must not parse Typst source.
-- Prolog must accept input and output directories at runtime.
+- The Python CLI transforms HTML only.
+- The transformer must not parse Typst source.
+- The transformer must accept input and output directories at runtime.
 - Typst-authored ownership defines publications.
 - Filesystem paths map owned publications to routes.
 - The ownership tree defines the rendered set: candidates reachable from the root via ownership edges become publications. Candidates outside the tree are dropped silently and produce no build error (ADR 0006).
@@ -84,7 +86,7 @@ Deep modules:
 - Site-global label validation and rewriting.
 - HTML transformation.
 - PDF assembly.
-- Build orchestration.
+- Thin Make build orchestration.
 - Test harness.
 
 Each module must include automated tests when created.
@@ -107,7 +109,7 @@ Required coverage:
 - duplicate and missing publication label detection
 - golden output snapshots
 
-The Prolog transformer should be testable without invoking Typst by using HTML fixtures.
+The Python transformer should be testable without invoking Typst by using HTML fixtures through `uv run site transform`.
 
 ## Out of Scope
 
