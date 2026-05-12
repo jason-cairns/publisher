@@ -41,6 +41,25 @@ if [ "$site_pdf_order" != "$expected_pdf_order" ]; then
   exit 1
 fi
 
+# PDF assembly imports/includes are resolved from the assembly file location.
+pdf_path_tmp="build/test-pdf-paths"
+rm -rf "$pdf_path_tmp"
+mkdir -p "$pdf_path_tmp/html" \
+         "$pdf_path_tmp/nested" \
+         "$pdf_path_tmp/public/colophon" \
+         "$pdf_path_tmp/public/posts/foo" \
+         "$pdf_path_tmp/public/thesis/chapter" \
+         "$pdf_path_tmp/public/thesis" \
+         "$pdf_path_tmp/public/writing"
+cp -R build/html/. "$pdf_path_tmp/html/"
+
+abs_src_dir="$(pwd -P)/src"
+scryer-prolog site.pl -- "$abs_src_dir" "$pdf_path_tmp/html" "$pdf_path_tmp/public" "$pdf_path_tmp/nested/site.typ" index.typ colophon.typ index.typ posts/foo.typ thesis.typ thesis/chapter.typ writing.typ
+
+grep -q '#import "../../../src/_publication.typ": publication' "$pdf_path_tmp/nested/site.typ"
+grep -q '#include "../../../src/index.typ"' "$pdf_path_tmp/nested/site.typ"
+${TYPST:?TYPST is required} compile --root . "$pdf_path_tmp/nested/site.typ" "$pdf_path_tmp/site.pdf"
+
 # Intermediate HTML carries the marker protocol verbatim.
 grep -q '<body>' build/html/index.html
 grep -q '<publication-publish data-target="writing.typ">Writing</publication-publish>' build/html/index.html

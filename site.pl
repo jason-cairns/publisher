@@ -50,7 +50,7 @@ site(SrcDir, HtmlDir, OutputDir, PdfTypPath, RootSource, Sources) :-
     valid_owners(Rendered, RootSource, RenderedOwnership),
     ownership_preorder(RootSource, RenderedOwnership, PdfOrder),
     documents_site_files(SrcDir, OutputDir, RenderedDocuments, RenderedOwnership, RenderedLabelDefs, RootSource),
-    pdf_typ_file(SrcDir, PdfOrder, PdfTyp),
+    pdf_typ_file(PdfTypPath, SrcDir, PdfOrder, PdfTyp),
     file_chars(PdfTypPath, PdfTyp).
 
 sources_documents(_, [], []).
@@ -237,27 +237,113 @@ ownership_children(Source, [owns(Other, _, _, _)|Edges], Children) :-
     dif(Source, Other),
     ownership_children(Source, Edges, Children).
 
-pdf_typ_file(SrcDir, Sources, Typ) :-
-    phrase(pdf_typ_file_(SrcDir, Sources), Typ).
+pdf_typ_file(PdfTypPath, SrcDir, Sources, Typ) :-
+    typst_source_prefix(PdfTypPath, SrcDir, SourcePrefix),
+    phrase(pdf_typ_file_(SourcePrefix, Sources), Typ).
 
-pdf_typ_file_(SrcDir, Sources) -->
-    "#import \"../",
-    seq(SrcDir),
+pdf_typ_file_(SourcePrefix, Sources) -->
+    "#import \"",
+    seq(SourcePrefix),
     "/_publication.typ\": publication\n\n",
-    pdf_publications(SrcDir, Sources).
+    pdf_publications(SourcePrefix, Sources).
 
 pdf_publications(_, []) --> [].
-pdf_publications(SrcDir, [Source|Sources]) -->
+pdf_publications(SourcePrefix, [Source|Sources]) -->
     "#publication(\"",
     seq(Source),
     "\")[\n",
-    "  #include \"../",
-    seq(SrcDir),
+    "  #include \"",
+    seq(SourcePrefix),
     "/",
     seq(Source),
     "\"\n",
     "]\n\n",
-    pdf_publications(SrcDir, Sources).
+    pdf_publications(SourcePrefix, Sources).
+
+typst_source_prefix(PdfTypPath, SrcDir, SourcePrefix) :-
+    getenv("PWD", Cwd),
+    absolute_path_components(Cwd, PdfTypPath, PdfTypComponents),
+    absolute_path_components(Cwd, SrcDir, SrcComponents),
+    directory_components(PdfTypComponents, PdfTypDirComponents),
+    relative_path_components(PdfTypDirComponents, SrcComponents, SourceComponents),
+    path_from_components(SourceComponents, SourcePrefix).
+
+absolute_path_components(_, ['/'|Path], Components) :-
+    path_components(Path, RawComponents),
+    normalized_path_components(RawComponents, Components).
+absolute_path_components(Cwd, [C|Path], Components) :-
+    dif(C, '/'),
+    path_components(Cwd, CwdComponents),
+    path_components([C|Path], PathComponents),
+    append(CwdComponents, PathComponents, RawComponents),
+    normalized_path_components(RawComponents, Components).
+
+directory_components([_], []).
+directory_components([Component, Next|Components], [Component|Directory]) :-
+    directory_components([Next|Components], Directory).
+
+relative_path_components(From, To, Relative) :-
+    uncommon_path_components(From, To, FromRest, ToRest),
+    parent_path_components(FromRest, Parents),
+    append(Parents, ToRest, Relative).
+
+uncommon_path_components([], To, [], To).
+uncommon_path_components(From, [], From, []).
+uncommon_path_components([Component|From], [Component|To], FromRest, ToRest) :-
+    uncommon_path_components(From, To, FromRest, ToRest).
+uncommon_path_components([FromComponent|From], [ToComponent|To], [FromComponent|From], [ToComponent|To]) :-
+    dif(FromComponent, ToComponent).
+
+parent_path_components([], []).
+parent_path_components([_|Components], [['.','.']|Parents]) :-
+    parent_path_components(Components, Parents).
+
+normalized_path_components(Components, Normalized) :-
+    normalized_path_components_(Components, [], Reversed),
+    reverse(Reversed, Normalized).
+
+normalized_path_components_([], Components, Components).
+normalized_path_components_([[]|Components], Acc, Normalized) :-
+    normalized_path_components_(Components, Acc, Normalized).
+normalized_path_components_([['.']|Components], Acc, Normalized) :-
+    normalized_path_components_(Components, Acc, Normalized).
+normalized_path_components_([['.','.']|Components], [_|Acc], Normalized) :-
+    normalized_path_components_(Components, Acc, Normalized).
+normalized_path_components_([['.','.']|Components], [], Normalized) :-
+    normalized_path_components_(Components, [], Normalized).
+normalized_path_components_([Component|Components], Acc, Normalized) :-
+    dif(Component, []),
+    dif(Component, ['.']),
+    dif(Component, ['.','.']),
+    normalized_path_components_(Components, [Component|Acc], Normalized).
+
+path_components(Path, Components) :-
+    phrase(path_components_(Components), Path).
+
+path_components_([Component|Components]) -->
+    path_component(Component),
+    "/",
+    path_components_(Components).
+path_components_([Component]) -->
+    path_component(Component).
+path_components_([]) --> [].
+
+path_component([C|Cs]) -->
+    [C],
+    { dif(C, '/') },
+    path_component(Cs).
+path_component([]) --> [].
+
+path_from_components([], ".").
+path_from_components(Components, Path) :-
+    phrase(path_from_components_(Components), Path).
+
+path_from_components_([Component]) -->
+    seq(Component).
+path_from_components_([Component, Next|Components]) -->
+    seq(Component),
+    "/",
+    path_from_components_([Next|Components]).
 
 documents_site_files(_, OutputDir, Documents, OwnershipEdges, LabelDefs, RootSource) :-
     documents_site_files_(OutputDir, Documents, Documents, OwnershipEdges, LabelDefs, RootSource).
