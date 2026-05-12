@@ -2,8 +2,9 @@
 
 - Keep the implementation aggressively small.
 - Typst is the source of truth.
-- Never parse Typst source in Prolog.
+- Never parse Typst source in the transformer.
 - HTML is an intermediate artifact.
+- The Python CLI transformer reads Typst-generated HTML markers.
 - Typst-authored ownership defines publication structure.
 - Filesystem paths map owned publications to routes.
 - Every publication compiles independently.
@@ -17,19 +18,6 @@
 - Interact with GitHub using the connector.
 - After creating a branch with the GitHub connector, fetch that branch ref before switching locally, for example `git fetch origin branch-name:refs/remotes/origin/branch-name` then `git switch --track -c branch-name origin/branch-name`.
 - Treat `docs/PRD.md` as important product and architecture context before implementation.
-- Keep Prolog pure and modern where possible, following Markus Triska's style at https://www.metalevel.at/prolog
-Do:
-  - Relations first: all predicates must be bidirectional
-  - DCGs for sequences
-  - Side effects isolated at the boundary.
-Don't:
-  - EVER use `!/1` (cut)
-  - Use `\=/2` or `=/2` (use `dif/2` instead)
-  - Use negation-as-failure
-  - Use `is/2` for arithmetic
-  - Encode control flow manually
-  - assert/retract for mutable state
-
 ## Agent skills
 
 ### Issue tracker
