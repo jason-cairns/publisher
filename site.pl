@@ -656,29 +656,29 @@ html_edges_(Edges) -->
 html_edges_([]) --> [].
 
 publish_marker(Target, Label) -->
-    "<publication-publish data-target=\"",
+    "<publication-graph-publish data-target=\"",
     attr_value(Target),
     ">",
     publish_body(Label).
 
 entry_marker(Target) -->
-    "<publication-entry data-target=\"",
+    "<publication-graph-entry data-target=\"",
     attr_value(Target),
-    "></publication-entry>".
+    "></publication-graph-entry>".
 
 link_marker(Target, Label) -->
-    "<publication-link data-target=\"",
+    "<publication-graph-link data-target=\"",
     attr_value(Target),
     ">",
     link_body(Label).
 
 label_marker(Name) -->
-    "<publication-label data-label=\"",
+    "<publication-graph-label data-label=\"",
     attr_value(Name),
-    "></publication-label>".
+    "></publication-graph-label>".
 
 label_ref_marker(Name, Label) -->
-    "<publication-ref data-label=\"",
+    "<publication-graph-ref data-label=\"",
     attr_value(Name),
     ">",
     label_ref_body(Label).
@@ -686,13 +686,13 @@ label_ref_marker(Name, Label) -->
 attr_value([]) --> "\"".
 attr_value([C|Cs]) --> [C], { dif(C, '"') }, attr_value(Cs).
 
-publish_body([]) --> "</publication-publish>".
+publish_body([]) --> "</publication-graph-publish>".
 publish_body([C|Cs]) --> [C], { dif(C, '<') }, publish_body(Cs).
 
-link_body([]) --> "</publication-link>".
+link_body([]) --> "</publication-graph-link>".
 link_body([C|Cs]) --> [C], { dif(C, '<') }, link_body(Cs).
 
-label_ref_body([]) --> "</publication-ref>".
+label_ref_body([]) --> "</publication-graph-ref>".
 label_ref_body([C|Cs]) --> [C], { dif(C, '<') }, label_ref_body(Cs).
 
 non_marker_char(C) -->
@@ -702,11 +702,11 @@ non_marker_char('<') -->
     "<",
     not_marker_prefix.
 
-% Commit point: at "<publication-" the parser MUST match a marker, not
+% Commit point: at "<publication-graph-" the parser MUST match a marker, not
 % character-eat the prefix. Without this, html_edges//1 is
 % non-deterministic and validation can be bypassed by backtracking into
 % an alternative parse where a marker was never extracted.
-not_marker_prefix --> not_marker_prefix_after("publication-").
+not_marker_prefix --> not_marker_prefix_after("publication-graph-").
 
 not_marker_prefix_after([Expected|_]) -->
     [C],
