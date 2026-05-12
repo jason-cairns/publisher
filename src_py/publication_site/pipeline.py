@@ -22,6 +22,9 @@ def transform_site(
     sources: list[str],
 ) -> None:
     documents = {source: _read_document(html_dir, source) for source in sources}
+    for source, document in documents.items():
+        _validate_reserved_markers(source, document)
+
     ownership_edges = [
         edge
         for source, document in documents.items()
@@ -81,8 +84,27 @@ class LabelRef:
     label: str
 
 
+_RESERVED_MARKERS = {
+    "publication-graph-publish": "data-target",
+    "publication-graph-entry": "data-target",
+    "publication-graph-link": "data-target",
+    "publication-graph-label": "data-label",
+    "publication-graph-ref": "data-label",
+}
+
+
 def _read_document(html_dir: Path, source: str) -> html.HtmlElement:
     return html.fromstring((_html_path(html_dir, source)).read_text(encoding="utf-8"))
+
+
+def _validate_reserved_markers(source: str, document: html.HtmlElement) -> None:
+    for marker in document.xpath("//*[starts-with(local-name(), 'publication-graph-')]"):
+        marker_name = marker.tag
+        required_attr = _RESERVED_MARKERS.get(marker_name)
+        if required_attr is None:
+            raise ValueError(f"unknown publication-graph marker {marker_name} in {source}")
+        if marker.get(required_attr) is None:
+            raise ValueError(f"{marker_name} in {source} missing {required_attr}")
 
 
 def _ownership_edges(source: str, document: html.HtmlElement) -> list[OwnershipEdge]:
