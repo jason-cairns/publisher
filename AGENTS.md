@@ -14,6 +14,7 @@
 - Prefer explicit Typst semantics over directory magic.
 - Keep Typst sources plain, modern, and semantic.
 - Add dependencies only when clearly justified.
+- Run `uv run ruff check .` and `uv run ty check` in validation workflows.
 - Create a GitHub branch per issue before implementation.
 - Interact with GitHub using the connector.
 - After creating a branch with the GitHub connector, fetch that branch ref before switching locally, for example `git fetch origin branch-name:refs/remotes/origin/branch-name` then `git switch --track -c branch-name origin/branch-name`.

@@ -16,6 +16,8 @@ site = "publication_site.cli:main"
 [dependency-groups]
 dev = [
   "pytest>=8.0",
+  "ruff>=0.11",
+  "ty>=0.0.1a14",
 ]
 
 [build-system]
