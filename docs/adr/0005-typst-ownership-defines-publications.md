@@ -16,7 +16,7 @@ The system needs:
 - explicit publication ownership
 - Typst as the semantic source of truth
 - no YAML, frontmatter, or route registry
-- no Typst source parsing in Prolog
+- no Typst source parsing in the transformer
 - deterministic publication index inheritance
 
 ## Decision
@@ -51,7 +51,7 @@ Stable label fragments derive from the explicit Typst label name, not from
 heading text. For example, `<pricing-signal>` maps to `#pricing-signal` in
 HTML.
 
-Prolog operates only on Typst-generated HTML. Typst helpers emit semantic HTML markers for ownership and reference edges; Prolog reads those markers from intermediate HTML and never parses Typst source.
+The Python transformer operates only on Typst-generated HTML. Typst helpers emit semantic HTML markers for ownership and reference edges; the transformer reads those markers from intermediate HTML and never parses Typst source.
 
 ## Consequences
 

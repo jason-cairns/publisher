@@ -92,8 +92,8 @@ one plain HTML `<nav>` block per ancestor that has publication index entries.
 under `build/html/`. Contains ownership and reference edges as marker
 elements.
 
-**Final HTML** — the transformed, published HTML written by the Prolog
-transformer to `public/`. Markers have been resolved into index blocks and
+**Final HTML** — the transformed, published HTML written by the Python CLI
+to `public/`. Markers have been resolved into index blocks and
 anchors; site chrome has been added.
 
 **PDF assembly source** — the generated Typst file written by the
@@ -106,8 +106,8 @@ HTML plus the unified PDF (`public/site.pdf`).
 
 ### Marker protocol
 
-The contract between Typst (`src/_publication.typ`) and the transformer
-(`site.pl`). Markers are semantic HTML elements emitted into intermediate
+The contract between Typst (`src/_publication.typ`) and the Python
+transformer. Markers are semantic HTML elements emitted into intermediate
 HTML and consumed by the transformer.
 The transformer reserves only the `publication-graph-` marker prefix;
 other `publication-*` elements remain ordinary authored HTML.
@@ -175,8 +175,7 @@ Edges originating outside `R` are ignored — they place no constraints on
 the build.
 
 **Sibling order.** Publication index entries authored by a single owner are
-ordered by their appearance in that source's intermediate HTML
-(DCG-sequential).
+ordered by their appearance in that source's intermediate HTML.
 
 **Ownership path.** The unique path `r = p_0, p_1, …, p_n = p` in the
 ownership tree. Used to render `p`'s publication index context.
@@ -202,7 +201,7 @@ directory `D`:
 π(p) = D + "/" + stem(p) + "/index.html"   for p ≠ r
 ```
 
-The transformer is a function
+The Python transformer is a function
 `T : (E_own, E_ref, L_def, L_ref, body : R → HTML) → Site` that, given valid inputs,
 writes the final HTML at every `π(p)` for `p ∈ R`, rewrites every
 reference marker in those bodies to an anchor whose `href` is `ρ(target)`,
@@ -215,6 +214,11 @@ preorder.
 
 - The ownership relation lives entirely in Typst source. The transformer
   reads markers from intermediate HTML; it never parses Typst.
+- The Python CLI has two public paths: `site build` compiles Typst before
+  transforming, while `site transform` consumes existing HTML fixtures and
+  does not invoke Typst.
+- The `Makefile` is a thin wrapper around the CLI, not the owner of the
+  publication model.
 - Filesystem paths under `src/` map publications to routes (`stem(p)`),
   but they do not decide publication membership. `R` is decided by
   ownership reachability.

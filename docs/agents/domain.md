@@ -24,7 +24,7 @@ Load-bearing terms (full definitions in `CONTEXT.md`):
 - **Ownership edge** (`publish`, `entry`), **reference edge** (`link`), **owner**.
 - **Ownership graph / tree**, **ownership path**, **publication index context**.
 - **Intermediate HTML**, **final HTML**, **site**.
-- **Marker protocol**: `publication-graph-publish`, `publication-graph-entry`, `publication-graph-link`.
+- **Marker protocol**: `publication-graph-publish`, `publication-graph-entry`, `publication-graph-link`, `publication-graph-label`, `publication-graph-ref`.
 
 ## ADRs
 
