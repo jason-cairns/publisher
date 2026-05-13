@@ -11,7 +11,7 @@ PDF_TYP_SOURCE := $(BUILD_DIR)/site.typ
 
 export TYPST
 
-.PHONY: build clean serve test
+.PHONY: build clean serve test lint typecheck ci
 
 build:
 	uv run site build --src $(SRC_DIR) --html $(INTERMEDIATE_DIR) --out $(PUBLIC_DIR) --pdf-typ $(PDF_TYP_SOURCE) --pdf-out $(PUBLIC_DIR)/site.pdf --root $(ROOT_SOURCE)
@@ -25,3 +25,12 @@ serve: build
 
 clean:
 	rm -rf $(BUILD_DIR) $(PUBLIC_DIR)
+
+
+lint:
+	uv run ruff check .
+
+typecheck:
+	uv run ty check
+
+ci: test lint typecheck build
