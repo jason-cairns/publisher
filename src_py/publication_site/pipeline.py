@@ -310,7 +310,7 @@ def _rewrite_markers(
 
 
 def _stitch_marker_split_paragraphs(document: html.HtmlElement) -> None:
-    inline_markers = {"publication-graph-link", "publication-graph-ref", "publication-graph-label"}
+    inline_markers = {"publication-graph-link", "publication-graph-ref"}
     changed = True
     while changed:
         changed = False
