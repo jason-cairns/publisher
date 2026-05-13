@@ -124,7 +124,7 @@ def test_final_html_has_site_chrome_routes_and_publication_indexes(built_site: B
     assert '<a href="/thesis/chapter/">Chapter</a>' in thesis_html
     assert '<a href="/thesis/chapter/" aria-current="page">Chapter</a>' in chapter_html
     assert "public without becoming" in colophon_html
-    assert '<link rel="stylesheet" href="/writing.css">' in writing_html
+    assert "<link rel=\"stylesheet\"" not in writing_html
     assert "<link rel=\"stylesheet\"" not in index_html
 
 
