@@ -274,6 +274,8 @@ def _rewrite_markers(
     source: str,
     label_sources: dict[str, str],
 ) -> None:
+    _stitch_marker_split_paragraphs(document)
+
     for marker in document.xpath("//publication-graph-publish"):
         _remove_element(marker)
 
@@ -305,6 +307,51 @@ def _rewrite_markers(
         label_source = label_sources[label]
         href = f"#{label}" if label_source == source else f"{_route_href(root, label_source)}#{label}"
         _replace_with_anchor(marker, href)
+
+
+def _stitch_marker_split_paragraphs(document: html.HtmlElement) -> None:
+    inline_markers = {"publication-graph-link", "publication-graph-ref", "publication-graph-label"}
+    changed = True
+    while changed:
+        changed = False
+        for paragraph in document.xpath("//p"):
+            marker = paragraph.getnext()
+            if marker is None or marker.tag not in inline_markers:
+                continue
+            next_paragraph = marker.getnext()
+            if next_paragraph is None or next_paragraph.tag != "p":
+                continue
+            _append_inline(paragraph, marker)
+            _append_inline(paragraph, next_paragraph)
+            changed = True
+            break
+
+
+def _append_inline(paragraph: html.HtmlElement, element: html.HtmlElement) -> None:
+    paragraph.append(deepcopy(element))
+    if element.tag == "p":
+        _unwrap_last_child(paragraph)
+    element.getparent().remove(element)
+
+
+def _unwrap_last_child(paragraph: html.HtmlElement) -> None:
+    child = paragraph[-1]
+    if child.text:
+        if len(paragraph) > 1:
+            previous = paragraph[-2]
+            previous.tail = (previous.tail or "") + child.text
+        else:
+            paragraph.text = (paragraph.text or "") + child.text
+    for grandchild in list(child):
+        child.remove(grandchild)
+        paragraph.append(grandchild)
+    if child.tail:
+        if len(paragraph) > 1:
+            previous = paragraph[-2]
+            previous.tail = (previous.tail or "") + child.tail
+        else:
+            paragraph.text = (paragraph.text or "") + child.tail
+    paragraph.remove(child)
 
 
 def _replace_with_anchor(marker: html.HtmlElement, href: str) -> None:
