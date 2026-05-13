@@ -65,6 +65,64 @@ def test_transform_preserves_body_text_tails_and_inline_marker_contents(tmp_path
     assert not document.xpath("//*[starts-with(local-name(), 'publication-graph-')]")
 
 
+def test_transform_stitches_paragraphs_split_by_inline_publication_markers(tmp_path):
+    src_dir = tmp_path / "src"
+    html_dir = tmp_path / "build" / "html"
+    out_dir = tmp_path / "public"
+    pdf_typ = tmp_path / "build" / "site.typ"
+
+    src_dir.mkdir()
+    html_dir.mkdir(parents=True)
+    (src_dir / "_publication.typ").write_text("", encoding="utf-8")
+    _write_html(
+        html_dir,
+        "index.typ",
+        (
+            "<h1>Home</h1>"
+            '<publication-graph-entry data-target="child.typ"></publication-graph-entry>'
+            "<p>Before </p>"
+            '<publication-graph-link data-target="child.typ">Child</publication-graph-link>'
+            "<p> after.</p>"
+            "<p>Label </p>"
+            '<publication-graph-ref data-label="child-note">note</publication-graph-ref>'
+            "<p> tail.</p>"
+        ),
+    )
+    _write_html(
+        html_dir,
+        "child.typ",
+        '<h1>Child</h1><publication-graph-label data-label="child-note"></publication-graph-label>',
+    )
+
+    result = main(
+        [
+            "transform",
+            "--src",
+            str(src_dir),
+            "--html",
+            str(html_dir),
+            "--out",
+            str(out_dir),
+            "--pdf-typ",
+            str(pdf_typ),
+            "--root",
+            "index.typ",
+            "index.typ",
+            "child.typ",
+        ]
+    )
+
+    assert result == 0
+    document = html.fromstring((out_dir / "index.html").read_text(encoding="utf-8"))
+    paragraphs = document.xpath("//main/p")
+
+    assert len(paragraphs) == 2
+    assert paragraphs[0].xpath("string()") == "Before Child after."
+    assert paragraphs[0].xpath("./a")[0].get("href") == "/child/"
+    assert paragraphs[1].xpath("string()") == "Label note tail."
+    assert paragraphs[1].xpath("./a")[0].get("href") == "/child/#child-note"
+
+
 def _write_html(html_dir: Path, source: str, body: str) -> None:
     html_path = html_dir / f"{source.removesuffix('.typ')}.html"
     html_path.parent.mkdir(parents=True, exist_ok=True)
