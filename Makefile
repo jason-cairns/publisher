@@ -16,8 +16,8 @@ export TYPST
 build:
 	uv run site build --src $(SRC_DIR) --html $(INTERMEDIATE_DIR) --out $(PUBLIC_DIR) --pdf-typ $(PDF_TYP_SOURCE) --pdf-out $(PUBLIC_DIR)/site.pdf --root $(ROOT_SOURCE)
 
-test: build
-	./test/build.sh
+test:
+	uv run pytest
 
 serve: build
 	@printf 'Serving public at http://localhost:%s/\n' "$(SERVE_PORT)"
