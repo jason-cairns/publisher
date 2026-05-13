@@ -450,24 +450,24 @@ def _navigation_html(
 
     return "".join(
         _publication_index_html(root, source, items)
-        for owner in _ownership_path(root, source, _rendered_ownership_edges(ownership_edges, rendered_set))
+        for owner in _ownership_path(root, source, ownership_edges, rendered_set)
         if (items := index_by_owner.get(owner))
     )
 
 
-def _rendered_ownership_edges(
+
+def _ownership_path(
+    root: str,
+    source: str,
     ownership_edges: list[OwnershipEdge],
-    rendered_set: set[str],
-) -> list[OwnershipEdge]:
-    return [
-        edge
-        for edge in ownership_edges
-        if edge.owner in rendered_set and edge.target in rendered_set
-    ]
+    rendered_set: set[str] | None = None,
+) -> list[str]:
+    owner_by_target: dict[str, str] = {}
+    for edge in ownership_edges:
+        if rendered_set is not None and (edge.owner not in rendered_set or edge.target not in rendered_set):
+            continue
+        owner_by_target[edge.target] = edge.owner
 
-
-def _ownership_path(root: str, source: str, ownership_edges: list[OwnershipEdge]) -> list[str]:
-    owner_by_target = {edge.target: edge.owner for edge in ownership_edges}
     path = [source]
     while path[-1] != root:
         path.append(owner_by_target[path[-1]])
