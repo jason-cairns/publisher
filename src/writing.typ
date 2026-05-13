@@ -1,6 +1,8 @@
-#import "_publication.typ": entry, publication-link
+#import "_publication.typ": entry, publication-link, publication-stylesheet
 
 = Writing
+
+#publication-stylesheet("/writing.css")
 
 #entry("posts/foo.typ")
 

@@ -133,3 +133,48 @@ def test_transform_escapes_decoded_title_text(tmp_path):
 
     assert "    <title>Rock &amp; Roll &lt;Again&gt; - cair.nz</title>\n" in rendered
     assert "<title>Rock & Roll <Again> - cair.nz</title>" not in rendered
+
+
+def test_transform_supports_default_css_and_route_override(tmp_path):
+    src_dir = tmp_path / "src"
+    html_dir = tmp_path / "build" / "html"
+    out_dir = tmp_path / "public"
+    pdf_typ = tmp_path / "build" / "site.typ"
+
+    src_dir.mkdir()
+    html_dir.mkdir(parents=True)
+    (src_dir / "_publication.typ").write_text("", encoding="utf-8")
+    (html_dir / "index.html").write_text(
+        '<!DOCTYPE html><html><body><h1>Home</h1><publication-graph-publish data-target="writing.typ">Writing</publication-graph-publish></body></html>',
+        encoding="utf-8",
+    )
+    (html_dir / "writing.html").write_text(
+        '<!DOCTYPE html><html><body><h1>Writing</h1><publication-graph-stylesheet data-href="/writing.css"></publication-graph-stylesheet></body></html>',
+        encoding="utf-8",
+    )
+
+    result = main(
+        [
+            "transform",
+            "--src",
+            str(src_dir),
+            "--html",
+            str(html_dir),
+            "--out",
+            str(out_dir),
+            "--pdf-typ",
+            str(pdf_typ),
+            "--root",
+            "index.typ",
+            "--css",
+            "/site.css",
+            "index.typ",
+            "writing.typ",
+        ]
+    )
+
+    assert result == 0
+    assert '<link rel="stylesheet" href="/site.css">' in (out_dir / "index.html").read_text(encoding="utf-8")
+    assert '<link rel="stylesheet" href="/writing.css">' in (
+        out_dir / "writing" / "index.html"
+    ).read_text(encoding="utf-8")
