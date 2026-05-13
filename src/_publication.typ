@@ -60,3 +60,9 @@
   #metadata(none) #label(publication_target(dest))
   #body
 ]
+
+#let publication-stylesheet(href) = context {
+  if html_export {
+    html.elem("publication-graph-stylesheet", attrs: ("data-href": href))
+  }
+}

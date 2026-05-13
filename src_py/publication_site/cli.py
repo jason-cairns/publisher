@@ -17,6 +17,7 @@ def main(argv: list[str] | None = None) -> int:
     build.add_argument("--pdf-typ", default="build/site.typ", type=Path)
     build.add_argument("--pdf-out", default="public/site.pdf", type=Path)
     build.add_argument("--root", default="index.typ")
+    build.add_argument("--css")
 
     transform = subparsers.add_parser(
         "transform",
@@ -27,14 +28,15 @@ def main(argv: list[str] | None = None) -> int:
     transform.add_argument("--out", required=True, type=Path)
     transform.add_argument("--pdf-typ", required=True, type=Path)
     transform.add_argument("--root", required=True)
+    transform.add_argument("--css")
     transform.add_argument("sources", nargs="+")
 
     args = parser.parse_args(argv)
 
     if args.command == "build":
-        build_site(args.src, args.html, args.out, args.pdf_typ, args.pdf_out, args.root)
+        build_site(args.src, args.html, args.out, args.pdf_typ, args.pdf_out, args.root, args.css)
     elif args.command == "transform":
-        transform_site(args.src, args.html, args.out, args.pdf_typ, args.root, args.sources)
+        transform_site(args.src, args.html, args.out, args.pdf_typ, args.root, args.sources, args.css)
 
     return 0
 

@@ -21,6 +21,7 @@ def build_site(
     pdf_typ: Path,
     pdf_out: Path,
     root: str,
+    css_href: str | None = None,
 ) -> None:
     sources = _publication_sources(src_dir)
     shutil.rmtree(html_dir, ignore_errors=True)
@@ -38,7 +39,7 @@ def build_site(
             encoding="utf-8",
         )
 
-    transform_site(src_dir, html_dir, out_dir, pdf_typ, root, sources)
+    transform_site(src_dir, html_dir, out_dir, pdf_typ, root, sources, css_href)
     compile_typst_pdf(pdf_typ, pdf_out, root=_compile_root(src_dir, pdf_typ, pdf_out))
 
 
@@ -49,6 +50,7 @@ def transform_site(
     pdf_typ: Path,
     root: str,
     sources: list[str],
+    css_href: str | None = None,
 ) -> None:
     documents = {source: _read_document(html_dir, source) for source in sources}
     for source, document in documents.items():
@@ -79,6 +81,10 @@ def transform_site(
         for source, document in documents.items()
         for label_ref in _label_refs(source, document)
     ]
+    stylesheet_hrefs = {
+        source: _stylesheet_href(document)
+        for source, document in documents.items()
+    }
     rendered = _validated_ownership_preorder(root, sources, ownership_edges, link_edges)
     label_sources = _validated_label_sources(rendered, label_defs, label_refs)
 
@@ -89,7 +95,11 @@ def transform_site(
         nav_html = _navigation_html(root, source, rendered, ownership_edges, publication_indices)
         out_path = _public_path(out_dir, root, source)
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(_site_page(root, title, nav_html, _body_html(document)), encoding="utf-8")
+        stylesheet_href = stylesheet_hrefs[source] or css_href
+        out_path.write_text(
+            _site_page(root, title, nav_html, _body_html(document), stylesheet_href),
+            encoding="utf-8",
+        )
 
     pdf_typ.parent.mkdir(parents=True, exist_ok=True)
     pdf_typ.write_text(_pdf_typ(src_dir, pdf_typ, rendered), encoding="utf-8")
@@ -144,6 +154,7 @@ _RESERVED_MARKERS = {
     "publication-graph-link": "data-target",
     "publication-graph-label": "data-label",
     "publication-graph-ref": "data-label",
+    "publication-graph-stylesheet": "data-href",
 }
 
 
@@ -204,6 +215,13 @@ def _label_refs(source: str, document: html.HtmlElement) -> list[LabelRef]:
         for marker in markers
         if (label := marker.get("data-label")) is not None
     ]
+
+
+def _stylesheet_href(document: html.HtmlElement) -> str | None:
+    markers = document.xpath("//publication-graph-stylesheet")
+    if not markers:
+        return None
+    return markers[-1].get("data-href")
 
 
 def _validated_ownership_preorder(
@@ -307,6 +325,9 @@ def _rewrite_markers(
         label_source = label_sources[label]
         href = f"#{label}" if label_source == source else f"{_route_href(root, label_source)}#{label}"
         _replace_with_anchor(marker, href)
+
+    for marker in document.xpath("//publication-graph-stylesheet"):
+        _remove_element(marker)
 
 
 def _stitch_marker_split_paragraphs(document: html.HtmlElement) -> None:
@@ -413,8 +434,8 @@ def _body_html(document: html.HtmlElement) -> str:
     return "\n".join("" if line.strip() == "" else line for line in raw.splitlines())
 
 
-def _site_page(root: str, title: str, nav_html: str, body: str) -> str:
-    document = _site_page_document(root, title, nav_html, body)
+def _site_page(root: str, title: str, nav_html: str, body: str, stylesheet_href: str | None) -> str:
+    document = _site_page_document(root, title, nav_html, body, stylesheet_href)
     page_body = document.find("body")
     head = document.find("head")
     header = page_body.find("header")
@@ -440,13 +461,21 @@ def _site_page(root: str, title: str, nav_html: str, body: str) -> str:
     )
 
 
-def _site_page_document(root: str, title: str, nav_html: str, body: str) -> html.HtmlElement:
+def _site_page_document(
+    root: str,
+    title: str,
+    nav_html: str,
+    body: str,
+    stylesheet_href: str | None,
+) -> html.HtmlElement:
     document = html.Element("html")
     document.set("lang", "en")
 
     head = etree.SubElement(document, "head")
     etree.SubElement(head, "meta", charset="utf-8")
     etree.SubElement(head, "meta", name="viewport", content="width=device-width, initial-scale=1")
+    if stylesheet_href is not None:
+        etree.SubElement(head, "link", rel="stylesheet", href=stylesheet_href)
     title_element = etree.SubElement(head, "title")
     title_element.text = f"{title} - cair.nz"
 
