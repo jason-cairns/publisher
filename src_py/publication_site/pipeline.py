@@ -8,7 +8,7 @@ from pathlib import Path
 import shutil
 
 import networkx as nx
-from lxml import etree
+from lxml import etree  # ty: ignore[unresolved-import]
 from lxml import html
 
 from .typst_compile import compile_typst_html, compile_typst_pdf
