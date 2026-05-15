@@ -66,3 +66,9 @@
     html.elem("publication-graph-stylesheet", attrs: ("data-href": href))
   }
 }
+
+#let publication-context(name) = context {
+  if html_export {
+    html.elem("publication-graph-context", attrs: ("data-name": str(name)))
+  }
+}

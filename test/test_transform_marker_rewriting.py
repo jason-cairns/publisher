@@ -99,6 +99,48 @@ def test_transform_rejects_missing_label_refs(tmp_path):
         )
 
 
+def test_transform_strips_publication_context_markers(tmp_path):
+    src_dir = tmp_path / "src"
+    html_dir = tmp_path / "build" / "html"
+    out_dir = tmp_path / "public"
+    pdf_typ = tmp_path / "build" / "site.typ"
+
+    src_dir.mkdir()
+    html_dir.mkdir(parents=True)
+    (src_dir / "_publication.typ").write_text("", encoding="utf-8")
+    _write_html(
+        html_dir,
+        "index.typ",
+        (
+            "<h1>Home</h1>"
+            '<publication-graph-context data-name="bib"></publication-graph-context>'
+            "<p>Body content.</p>"
+        ),
+    )
+
+    result = main(
+        [
+            "transform",
+            "--src",
+            str(src_dir),
+            "--html",
+            str(html_dir),
+            "--out",
+            str(out_dir),
+            "--pdf-typ",
+            str(pdf_typ),
+            "--root",
+            "index.typ",
+            "index.typ",
+        ]
+    )
+
+    assert result == 0
+    index_html = (out_dir / "index.html").read_text(encoding="utf-8")
+    assert "<publication-graph-context" not in index_html
+    assert "Body content." in index_html
+
+
 def _write_html(html_dir: Path, source: str, body: str) -> None:
     html_path = html_dir / f"{source.removesuffix('.typ')}.html"
     html_path.parent.mkdir(parents=True, exist_ok=True)

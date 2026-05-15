@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass
-from html import escape
 import os
 from pathlib import Path
 import shutil
@@ -11,6 +10,7 @@ import networkx as nx
 from lxml import etree  # ty: ignore[unresolved-import]
 from lxml import html
 
+from . import scoping
 from .typst_compile import compile_typst_html, compile_typst_pdf
 
 
@@ -61,11 +61,6 @@ def transform_site(
         for source, document in documents.items()
         for edge in _ownership_edges(source, document)
     ]
-    publication_indices = [
-        item
-        for source, document in documents.items()
-        for item in _publication_index_items(source, document)
-    ]
     link_edges = [
         edge
         for source, document in documents.items()
@@ -88,16 +83,29 @@ def transform_site(
     rendered = _validated_ownership_preorder(root, sources, ownership_edges, link_edges)
     label_sources = _validated_label_sources(rendered, label_defs, label_refs)
 
+    rendered_documents = [(source, documents[source]) for source in rendered]
+    context_starts = scoping.discover_context_starts(rendered_documents)
+    facts = scoping.discover_facts(
+        rendered_documents,
+        [scoping.extract_publication_link_facts],
+    )
+    memberships = scoping.resolve_memberships(
+        rendered,
+        [(edge.owner, edge.target) for edge in ownership_edges],
+        context_starts,
+    )
+    fact_spaces = scoping.attach_facts(memberships, facts)
+    scoping.run_renderers([], fact_spaces)
+
     for source in rendered:
         document = documents[source]
         _rewrite_markers(document, root, source, label_sources)
         title = _title(document, source)
-        nav_html = _navigation_html(root, source, rendered, ownership_edges, publication_indices)
         out_path = _public_path(out_dir, root, source)
         out_path.parent.mkdir(parents=True, exist_ok=True)
         stylesheet_href = stylesheet_hrefs[source] or css_href
         out_path.write_text(
-            _site_page(root, title, nav_html, _body_html(document), stylesheet_href),
+            _site_page(root, title, _body_html(document), stylesheet_href),
             encoding="utf-8",
         )
 
@@ -130,13 +138,6 @@ class LinkEdge:
 
 
 @dataclass(frozen=True)
-class PublicationIndexItem:
-    owner: str
-    target: str
-    title: str
-
-
-@dataclass(frozen=True)
 class LabelDef:
     source: str
     label: str
@@ -155,6 +156,7 @@ _RESERVED_MARKERS = {
     "publication-graph-label": "data-label",
     "publication-graph-ref": "data-label",
     "publication-graph-stylesheet": "data-href",
+    "publication-graph-context": "data-name",
 }
 
 
@@ -176,15 +178,6 @@ def _ownership_edges(source: str, document: html.HtmlElement) -> list[OwnershipE
     markers = document.xpath("//publication-graph-publish | //publication-graph-entry")
     return [
         OwnershipEdge(source, target)
-        for marker in markers
-        if (target := marker.get("data-target")) is not None
-    ]
-
-
-def _publication_index_items(source: str, document: html.HtmlElement) -> list[PublicationIndexItem]:
-    markers = document.xpath("//publication-graph-publish")
-    return [
-        PublicationIndexItem(source, target, marker.text_content())
         for marker in markers
         if (target := marker.get("data-target")) is not None
     ]
@@ -329,6 +322,9 @@ def _rewrite_markers(
     for marker in document.xpath("//publication-graph-stylesheet"):
         _remove_element(marker)
 
+    for marker in document.xpath("//publication-graph-context"):
+        _remove_element(marker)
+
 
 def _stitch_marker_split_paragraphs(document: html.HtmlElement) -> None:
     inline_markers = {"publication-graph-link", "publication-graph-ref", "publication-graph-label"}
@@ -434,13 +430,12 @@ def _body_html(document: html.HtmlElement) -> str:
     return "\n".join("" if line.strip() == "" else line for line in raw.splitlines())
 
 
-def _site_page(root: str, title: str, nav_html: str, body: str, stylesheet_href: str | None) -> str:
-    document = _site_page_document(root, title, nav_html, body, stylesheet_href)
+def _site_page(root: str, title: str, body: str, stylesheet_href: str | None) -> str:
+    document = _site_page_document(root, title, body, stylesheet_href)
     page_body = document.find("body")
     head = document.find("head")
     header = page_body.find("header")
     main = page_body.find("main")
-    navs = page_body.xpath("./nav")
 
     return (
         "<!doctype html>\n"
@@ -451,10 +446,8 @@ def _site_page(root: str, title: str, nav_html: str, body: str, stylesheet_href:
         "  </head>\n"
         "  <body>\n"
         f"    {_element_html(header)}\n"
-        + "".join(f"{_indent_first_line(_element_html(nav), '    ')}\n" for nav in navs)
-        +
         "    <main>\n"
-        f"{_main_html(main, bool(navs))}"
+        f"{_main_html(main)}"
         "    </main>\n"
         "  </body>\n"
         "</html>\n"
@@ -464,7 +457,6 @@ def _site_page(root: str, title: str, nav_html: str, body: str, stylesheet_href:
 def _site_page_document(
     root: str,
     title: str,
-    nav_html: str,
     body: str,
     stylesheet_href: str | None,
 ) -> html.HtmlElement:
@@ -484,9 +476,6 @@ def _site_page_document(
     home_link = etree.SubElement(header, "a", href=_route_href(root, root))
     home_link.text = "cair.nz"
 
-    for nav in html.fragments_fromstring(nav_html):
-        page_body.append(nav)
-
     main = etree.SubElement(page_body, "main")
     for child in html.fragments_fromstring(body):
         main.append(child)
@@ -498,69 +487,9 @@ def _element_html(element: html.HtmlElement) -> str:
     return html.tostring(element, encoding="unicode", with_tail=False)
 
 
-def _indent_first_line(value: str, prefix: str) -> str:
-    lines = value.splitlines()
-    lines[0] = f"{prefix}{lines[0]}"
-    return "\n".join(lines)
-
-
-def _main_html(main: html.HtmlElement, has_nav: bool) -> str:
+def _main_html(main: html.HtmlElement) -> str:
     body = "".join(html.tostring(child, encoding="unicode", with_tail=True) for child in main)
-    if has_nav:
-        return f"\n    {body}\n\n"
     return f"      {body}\n"
-
-
-def _navigation_html(
-    root: str,
-    source: str,
-    rendered: list[str],
-    ownership_edges: list[OwnershipEdge],
-    publication_indices: list[PublicationIndexItem],
-) -> str:
-    rendered_set = set(rendered)
-    index_by_owner: dict[str, list[PublicationIndexItem]] = {}
-    for item in publication_indices:
-        if item.owner in rendered_set and item.target in rendered_set:
-            index_by_owner.setdefault(item.owner, []).append(item)
-
-    return "".join(
-        _publication_index_html(root, source, items)
-        for owner in _ownership_path(root, source, _rendered_ownership_edges(ownership_edges, rendered_set))
-        if (items := index_by_owner.get(owner))
-    )
-
-
-def _rendered_ownership_edges(
-    ownership_edges: list[OwnershipEdge],
-    rendered_set: set[str],
-) -> list[OwnershipEdge]:
-    return [
-        edge
-        for edge in ownership_edges
-        if edge.owner in rendered_set and edge.target in rendered_set
-    ]
-
-
-def _ownership_path(root: str, source: str, ownership_edges: list[OwnershipEdge]) -> list[str]:
-    owner_by_target = {edge.target: edge.owner for edge in ownership_edges}
-    path = [source]
-    while path[-1] != root:
-        path.append(owner_by_target[path[-1]])
-    return list(reversed(path))
-
-
-def _publication_index_html(root: str, source: str, items: list[PublicationIndexItem]) -> str:
-    links = "".join(
-        _publication_index_item_html(root, source, item)
-        for item in items
-    )
-    return "    <nav>\n" "      <ul>\n" f"{links}" "      </ul>\n" "    </nav>\n"
-
-
-def _publication_index_item_html(root: str, source: str, item: PublicationIndexItem) -> str:
-    current = ' aria-current="page"' if item.target == source else ""
-    return f'        <li><a href="{_route_href(root, item.target)}"{current}>{escape(item.title)}</a></li>\n'
 
 
 def _route_href(root: str, source: str) -> str:
