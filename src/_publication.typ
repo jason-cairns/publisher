@@ -67,8 +67,12 @@
   }
 }
 
-#let publication-context(name) = context {
+#let publication-context(name: none) = context {
   if html_export {
-    html.elem("publication-graph-context", attrs: ("data-name": str(name)))
+    if name == none {
+      html.elem("publication-graph-context")
+    } else {
+      html.elem("publication-graph-context", attrs: ("data-name": str(name)))
+    }
   }
 }

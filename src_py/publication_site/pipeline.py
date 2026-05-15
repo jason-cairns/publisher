@@ -149,14 +149,14 @@ class LabelRef:
     label: str
 
 
-_RESERVED_MARKERS = {
+_RESERVED_MARKERS: dict[str, str | None] = {
     "publication-graph-publish": "data-target",
     "publication-graph-entry": "data-target",
     "publication-graph-link": "data-target",
     "publication-graph-label": "data-label",
     "publication-graph-ref": "data-label",
     "publication-graph-stylesheet": "data-href",
-    "publication-graph-context": "data-name",
+    "publication-graph-context": None,
 }
 
 
@@ -167,10 +167,10 @@ def _read_document(html_dir: Path, source: str) -> html.HtmlElement:
 def _validate_reserved_markers(source: str, document: html.HtmlElement) -> None:
     for marker in document.xpath("//*[starts-with(local-name(), 'publication-graph-')]"):
         marker_name = marker.tag
-        required_attr = _RESERVED_MARKERS.get(marker_name)
-        if required_attr is None:
+        if marker_name not in _RESERVED_MARKERS:
             raise ValueError(f"unknown publication-graph marker {marker_name} in {source}")
-        if marker.get(required_attr) is None:
+        required_attr = _RESERVED_MARKERS[marker_name]
+        if required_attr is not None and marker.get(required_attr) is None:
             raise ValueError(f"{marker_name} in {source} missing {required_attr}")
 
 
