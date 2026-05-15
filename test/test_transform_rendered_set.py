@@ -60,7 +60,7 @@ def test_transform_drops_unreachable_candidates_from_output_and_pdf(tmp_path):
     )
 
 
-def test_transform_ignores_unreachable_owners_when_building_navigation(tmp_path):
+def test_transform_ignores_unreachable_owners(tmp_path):
     src_dir = tmp_path / "src"
     html_dir = tmp_path / "build" / "html"
     out_dir = tmp_path / "public"
@@ -102,6 +102,8 @@ def test_transform_ignores_unreachable_owners_when_building_navigation(tmp_path)
     )
 
     assert result == 0
-    child_html = (out_dir / "child" / "index.html").read_text(encoding="utf-8")
-    assert '<a href="/child/" aria-current="page">Child</a>' in child_html
+    assert (out_dir / "child" / "index.html").is_file()
     assert not (out_dir / "orphan" / "index.html").exists()
+    pdf_assembly = pdf_typ.read_text(encoding="utf-8")
+    assert '#publication("orphan.typ")' not in pdf_assembly
+    assert '#publication("child.typ")' in pdf_assembly

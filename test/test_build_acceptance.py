@@ -103,29 +103,25 @@ def test_intermediate_html_carries_marker_protocol(built_site: BuiltSite) -> Non
     assert '<publication-graph-ref data-label="foo-note">foo note</publication-graph-ref>' in index_html
 
 
-def test_final_html_has_site_chrome_routes_and_publication_indexes(built_site: BuiltSite) -> None:
+def test_final_html_has_site_chrome_and_routes(built_site: BuiltSite) -> None:
     public = built_site.public_dir
 
     index_html = (public / "index.html").read_text(encoding="utf-8")
-    writing_html = (public / "writing" / "index.html").read_text(encoding="utf-8")
     foo_html = (public / "posts" / "foo" / "index.html").read_text(encoding="utf-8")
-    thesis_html = (public / "thesis" / "index.html").read_text(encoding="utf-8")
-    chapter_html = (public / "thesis" / "chapter" / "index.html").read_text(encoding="utf-8")
     colophon_html = (public / "colophon" / "index.html").read_text(encoding="utf-8")
 
     assert "<main>" in index_html
     assert "standalone Typst publication" in index_html
-    assert "<nav>" in index_html
-    assert '<a href="/writing/">Writing</a>' in index_html
-    assert '<a href="/thesis/">Thesis</a>' in index_html
-    assert '<a href="/writing/" aria-current="page">Writing</a>' in writing_html
     assert "anonymous ownership edge" in foo_html
-    assert '<a href="/thesis/" aria-current="page">Thesis</a>' in thesis_html
-    assert '<a href="/thesis/chapter/">Chapter</a>' in thesis_html
-    assert '<a href="/thesis/chapter/" aria-current="page">Chapter</a>' in chapter_html
     assert "public without becoming" in colophon_html
-    assert "<link rel=\"stylesheet\"" not in writing_html
     assert "<link rel=\"stylesheet\"" not in index_html
+
+
+def test_final_html_renders_no_navigation_blocks(built_site: BuiltSite) -> None:
+    public_html = _read_tree_text(built_site.public_dir, "*.html")
+
+    assert "<nav>" not in public_html
+    assert 'aria-current="page"' not in public_html
 
 
 def test_publication_links_and_labels_resolve_to_routes_and_fragments(built_site: BuiltSite) -> None:
@@ -166,20 +162,6 @@ def test_protocol_names_are_generic_not_site_branded(repo_root: Path) -> None:
     )
 
     assert branded_protocol_name not in implementation_text.lower()
-
-
-def test_entry_ownership_does_not_create_index_items(built_site: BuiltSite) -> None:
-    index_html = (built_site.public_dir / "index.html").read_text(encoding="utf-8")
-    writing_html = (built_site.public_dir / "writing" / "index.html").read_text(encoding="utf-8")
-    foo_html = (built_site.public_dir / "posts" / "foo" / "index.html").read_text(encoding="utf-8")
-    chapter_html = (
-        built_site.public_dir / "thesis" / "chapter" / "index.html"
-    ).read_text(encoding="utf-8")
-
-    assert '<a href="/colophon/">colophon</a></li>' not in index_html
-    assert writing_html.count("<nav>") == 1
-    assert foo_html.count("<nav>") == 1
-    assert chapter_html.count("<nav>") == 2
 
 
 def test_representative_pages_match_golden_snapshots(built_site: BuiltSite) -> None:

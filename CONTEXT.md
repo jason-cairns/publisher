@@ -124,6 +124,7 @@ other `publication-*` elements remain ordinary authored HTML.
 | `<publication-graph-link data-target="T">Label</publication-graph-link>` | reference edge `(u, T, "Label")` | `#publication-link("T")[Label]` |
 | `<publication-graph-label data-label="A"></publication-graph-label>` | label definition `(u, A)` | `#publication-label(<A>)` |
 | `<publication-graph-ref data-label="A">Label</publication-graph-ref>` | label reference `(u, A, "Label")` | `#publication-ref(<A>)[Label]` |
+| `<publication-graph-context data-name="N"></publication-graph-context>` | context start `(u, N)` for the fact/context/rendering model (ADR 0007) | `#publication-context("N")` |
 
 Where `u` is the source containing the marker, `T` is the target source,
 and `A` is a site-global label name.
