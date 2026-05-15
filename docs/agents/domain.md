@@ -9,7 +9,6 @@ This is a single-context repo.
 Read these before implementation work:
 
 - `CONTEXT.md` at the repo root for the project's domain glossary and formal model.
-- `docs/PRD.md` for product requirements, architecture, and core principles.
 - Relevant ADRs under `docs/adr/` for architectural decisions.
 - `AGENTS.md` for repo-specific engineering rules.
 
