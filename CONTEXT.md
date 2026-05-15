@@ -5,9 +5,8 @@ issues, tests, ADRs, code, or comments. If a term you need isn't here yet,
 either you're inventing language the project doesn't use, or there's a
 real gap — add it here.
 
-The product framing lives in [`docs/PRD.md`](docs/PRD.md). Architectural
-decisions live in [`docs/adr/`](docs/adr/). This file is the glossary plus
-the formal model that the architecture rests on.
+Architectural decisions live in [`docs/adr/`](docs/adr/). This file is the
+glossary plus the formal model that the architecture rests on.
 
 ## Glossary
 
@@ -85,6 +84,12 @@ without producing an index item.
 **Publication index context** — the ordered list of publication indexes
 inherited along a publication's ownership path. The published page renders
 one plain HTML `<nav>` block per ancestor that has publication index entries.
+
+**Title** — a publication's display name, derived from the first level-1
+heading in its intermediate HTML. Titles are not authored as separate
+metadata; they live in normal Typst content. Heading-derived deep anchors
+within a publication are out of scope by default — cross-publication deep
+links require an explicit `#publication-label`.
 
 ### Pipeline artefacts
 

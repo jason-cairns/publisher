@@ -18,7 +18,7 @@
 - Create a GitHub branch per issue before implementation.
 - Interact with GitHub using the connector.
 - After creating a branch with the GitHub connector, fetch that branch ref before switching locally, for example `git fetch origin branch-name:refs/remotes/origin/branch-name` then `git switch --track -c branch-name origin/branch-name`.
-- Treat `docs/PRD.md` as important product and architecture context before implementation.
+- Treat `CONTEXT.md` and ADRs under `docs/adr/` as important architectural context before implementation.
 
 ## Python style
 
@@ -39,4 +39,4 @@ Use the default five-label triage vocabulary. See `docs/agents/triage-labels.md`
 
 ### Domain docs
 
-Single-context repo: read `docs/PRD.md` and relevant ADRs under `docs/adr/`; suggest adding `CONTEXT.md` once context grows too large for the PRD/ADR setup. See `docs/agents/domain.md`.
+Single-context repo: read `CONTEXT.md` and relevant ADRs under `docs/adr/`. See `docs/agents/domain.md`.
