@@ -32,6 +32,8 @@ Compactly:
 
 A fact space is the scoped set of fact references available to a context membership after ownership-based scope resolution.
 
+There is no separate collector abstraction. Fact accumulation falls out of context membership plus renderer queries: contexts hold scoped fact references, renderers query them. Naming a third role would just duplicate one of the two.
+
 ### Vocabulary
 
 #### Fact
@@ -46,6 +48,17 @@ A fact is emitted by a publication and includes enough metadata for filtering an
 - route/path metadata when relevant
 
 Facts are attached to contexts by reference, never copied.
+
+Because facts retain their tree and source location, location-aware filtering is a renderer concern, not a context concern. A renderer that has selected a context's fact space may further restrict to:
+
+- all facts in the context
+- facts upstream of the renderer in the ownership tree
+- facts downstream of the renderer
+- facts before or after the renderer in source order
+- facts on the ownership path between the renderer and the root
+- facts from selected branches
+
+The context does not encode any of those filters; it only decides which facts are *in scope*. This keeps contexts a single concept rather than a family of context kinds.
 
 #### Context
 
@@ -71,6 +84,13 @@ A renderer instance is discovered in the publication tree and declares:
 - how it transforms selected facts into output
 
 Renderers consume scoped data and must not perform discovery walks for scoping.
+
+The relationship between contexts and renderers is many-to-many in every direction:
+
+- one context can feed many renderer instances
+- one renderer instance can read from many contexts
+- one renderer definition can be instantiated many times in the tree
+- many contexts can collapse into one rendered output
 
 Examples:
 
