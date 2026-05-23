@@ -15,33 +15,151 @@ pub(super) fn record_call(
     let callee = raw_expr(call.callee());
     let args = CallArgs::from(call.args());
 
-    match callee.as_str() {
-        "publisher.child" => {
-            if let Some(path) = args.first_string() {
-                parsed.child_paths.push(normalize_source_path(&path));
-            }
-        }
-        "publisher.children" => {
-            if let Some(pattern) = args.first_string() {
-                let children = parser.expand_children_glob(&parsed.source_path, &pattern)?;
-                parsed.child_paths.extend(children);
-            }
-        }
-        "publisher.scope" => projections::record_scope(parsed, &args),
-        "publisher.outline" => projections::record_outline(parsed, args),
-        "publisher.bibliography" => projections::record_bibliography(parsed, args),
-        "publisher.ref" => projections::record_reference(parsed, args),
-        "publisher.nav.suppress" => projections::record_nav_suppression(parsed),
-        _ if callee.starts_with("publisher.") => {
-            parsed.warnings.push(ParseWarning {
-                source_path: Some(parsed.source_path.clone()),
-                kind: ParseWarningKind::UnsupportedPublisherCall,
-                message: format!("unsupported publisher call preserved for review: {callee}"),
-            });
-        }
-        _ => {}
+    if let Some(handler) = PUBLISHER_CALL_HANDLERS
+        .iter()
+        .find(|handler| handler.matches(&callee))
+    {
+        handler.record(parser, parsed, &args)?;
+    } else if callee.starts_with("publisher.") {
+        parsed.warnings.push(ParseWarning {
+            source_path: Some(parsed.source_path.clone()),
+            kind: ParseWarningKind::UnsupportedPublisherCall,
+            message: format!("unsupported publisher call preserved for review: {callee}"),
+        });
     }
 
+    Ok(())
+}
+
+trait PublisherCallHandler: Sync {
+    fn matches(&self, callee: &str) -> bool;
+
+    fn record(
+        &self,
+        parser: &PublicationParser,
+        parsed: &mut ParsedFile,
+        args: &CallArgs,
+    ) -> Result<(), ParseError>;
+}
+
+struct ExactPublisherCall {
+    callee: &'static str,
+    recorder: fn(&PublicationParser, &mut ParsedFile, &CallArgs) -> Result<(), ParseError>,
+}
+
+impl PublisherCallHandler for ExactPublisherCall {
+    fn matches(&self, callee: &str) -> bool {
+        self.callee == callee
+    }
+
+    fn record(
+        &self,
+        parser: &PublicationParser,
+        parsed: &mut ParsedFile,
+        args: &CallArgs,
+    ) -> Result<(), ParseError> {
+        (self.recorder)(parser, parsed, args)
+    }
+}
+
+static PUBLISHER_CALL_HANDLERS: [&dyn PublisherCallHandler; 7] = [
+    &ExactPublisherCall {
+        callee: "publisher.child",
+        recorder: record_child,
+    },
+    &ExactPublisherCall {
+        callee: "publisher.children",
+        recorder: record_children,
+    },
+    &ExactPublisherCall {
+        callee: "publisher.scope",
+        recorder: record_scope,
+    },
+    &ExactPublisherCall {
+        callee: "publisher.outline",
+        recorder: record_outline,
+    },
+    &ExactPublisherCall {
+        callee: "publisher.bibliography",
+        recorder: record_bibliography,
+    },
+    &ExactPublisherCall {
+        callee: "publisher.ref",
+        recorder: record_reference,
+    },
+    &ExactPublisherCall {
+        callee: "publisher.nav.suppress",
+        recorder: record_nav_suppression,
+    },
+];
+
+fn record_child(
+    _parser: &PublicationParser,
+    parsed: &mut ParsedFile,
+    args: &CallArgs,
+) -> Result<(), ParseError> {
+    if let Some(path) = args.first_string() {
+        parsed.child_paths.push(normalize_source_path(&path));
+    }
+
+    Ok(())
+}
+
+fn record_children(
+    parser: &PublicationParser,
+    parsed: &mut ParsedFile,
+    args: &CallArgs,
+) -> Result<(), ParseError> {
+    if let Some(pattern) = args.first_string() {
+        let children = parser.expand_children_glob(&parsed.source_path, &pattern)?;
+        parsed.child_paths.extend(children);
+    }
+
+    Ok(())
+}
+
+fn record_scope(
+    _parser: &PublicationParser,
+    parsed: &mut ParsedFile,
+    args: &CallArgs,
+) -> Result<(), ParseError> {
+    projections::record_scope(parsed, args);
+    Ok(())
+}
+
+fn record_outline(
+    _parser: &PublicationParser,
+    parsed: &mut ParsedFile,
+    args: &CallArgs,
+) -> Result<(), ParseError> {
+    projections::record_outline(parsed, args);
+    Ok(())
+}
+
+fn record_bibliography(
+    _parser: &PublicationParser,
+    parsed: &mut ParsedFile,
+    args: &CallArgs,
+) -> Result<(), ParseError> {
+    projections::record_bibliography(parsed, args);
+    Ok(())
+}
+
+fn record_reference(
+    _parser: &PublicationParser,
+    parsed: &mut ParsedFile,
+    args: &CallArgs,
+) -> Result<(), ParseError> {
+    projections::record_reference(parsed, args);
+    Ok(())
+}
+
+fn record_nav_suppression(
+    _parser: &PublicationParser,
+    parsed: &mut ParsedFile,
+    _args: &CallArgs,
+) -> Result<(), ParseError> {
+    projections::record_nav_suppression(parsed);
     Ok(())
 }
 

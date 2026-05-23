@@ -23,7 +23,7 @@ pub(super) fn record_scope(parsed: &mut ParsedFile, args: &CallArgs) {
     parsed.scopes.push(scope);
 }
 
-pub(super) fn record_outline(parsed: &mut ParsedFile, args: CallArgs) {
+pub(super) fn record_outline(parsed: &mut ParsedFile, args: &CallArgs) {
     let query_id = parsed.next_query_id("outline");
     let projection_id = parsed.next_projection_id("outline");
 
@@ -64,7 +64,7 @@ pub(super) fn record_outline(parsed: &mut ParsedFile, args: CallArgs) {
     parsed.projections.push(projection);
 }
 
-pub(super) fn record_bibliography(parsed: &mut ParsedFile, args: CallArgs) {
+pub(super) fn record_bibliography(parsed: &mut ParsedFile, args: &CallArgs) {
     let query_id = parsed.next_query_id("bibliography");
     let projection_id = parsed.next_projection_id("bibliography");
 
@@ -101,7 +101,7 @@ pub(super) fn record_bibliography(parsed: &mut ParsedFile, args: CallArgs) {
     parsed.projections.push(projection);
 }
 
-pub(super) fn record_reference(parsed: &mut ParsedFile, args: CallArgs) {
+pub(super) fn record_reference(parsed: &mut ParsedFile, args: &CallArgs) {
     let Some(target) = args.first_label() else {
         return;
     };
