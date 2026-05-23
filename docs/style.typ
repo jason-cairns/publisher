@@ -2,3 +2,4 @@
 - Don't overcomplicate things -- if you're reaching for a pattern, you're probably overcomplicating it.
 - Use structured data construction, not string manipulation.
 - The code should read well, like a DSL.
+- Keep implementation as close to typst as possible (e.g. if scope is same page, just use the standard typst function)
