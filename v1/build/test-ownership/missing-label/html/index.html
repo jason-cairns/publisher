@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  </head>
+  <body>
+    <h2>cair.nz</h2>
+    <publication-graph-publish data-target="writing.typ">Writing</publication-graph-publish><publication-graph-publish data-target="thesis.typ">Thesis</publication-graph-publish><publication-graph-entry data-target="colophon.typ"></publication-graph-entry>
+    <p>This page is a standalone Typst publication.</p>
+    <publication-graph-label data-label="root-note"></publication-graph-label>
+    <p>It proves the smallest publishing path: Typst source to intermediate HTML, transformed site HTML, and a unified PDF artifact.</p>
+    <p>Read the</p>
+    <publication-graph-link data-target="colophon.typ">colophon</publication-graph-link>
+    <p>.</p>
+    <p>The</p>
+    <publication-graph-ref data-label="root-note">root note</publication-graph-ref>
+    <p>is local, and the</p>
+    <publication-graph-ref data-label="foo-note">foo note</publication-graph-ref>
+    <p>is in another publication.</p>
+  </body>
+</html>
+<publication-graph-ref data-label="missing-note">Missing</publication-graph-ref>
