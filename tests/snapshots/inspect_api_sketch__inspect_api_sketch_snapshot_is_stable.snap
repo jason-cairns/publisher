@@ -1,0 +1,340 @@
+---
+source: tests/inspect_api_sketch.rs
+expression: "inspect_publication(&publication, &report, &options)"
+---
+Publication
+  root: index.typ
+  nodes: 8
+  scopes: 16
+  properties: 17
+  queries: 9
+  projections: 9
+  warnings: 1
+  validation-errors: 0
+
+Tree
+  index.typ
+    writing.typ
+      writing/blog-1.typ
+      writing/blog-2.typ
+    thesis/intro.typ
+      thesis/bib.typ
+      thesis/ch-1.typ
+    cv.typ
+
+Node index.typ
+  id: index parent=<root>
+  parsed-from: examples/api_sketch_site/index.typ
+  children:
+    writing.typ
+    thesis/intro.typ
+    cv.typ
+  properties:
+    source-path = "index.typ" implicit(source path)
+    title = "My Publication" implicit(source-heading level=1)
+    nav.suppressed = true explicit(publisher.nav.suppress)
+  scopes declared:
+    nav:index kind=nav name=nav root=index.typ extent=descendants explicit order=0
+  spine:
+    global(index.typ)
+    current-page(index.typ)
+    nav(index.typ)
+  projections:
+    projection:index:outline:1 outline origin=index.typ
+      rendering: depth=1
+      query query:index:outline:0 origin=index
+        selection: nodes explicit
+        filters: <none>
+        defaulted-values: hidden (use --debug-defaults)
+    projection:index:nav navigation origin=index.typ suppressed=true reason=property(nav.suppressed)
+      rendering: <none>
+      query query:index:nav origin=index
+        filters: <none>
+        defaulted-values: hidden (use --debug-defaults)
+
+Node writing.typ
+  id: writing parent=index.typ
+  parsed-from: examples/api_sketch_site/writing.typ
+  children:
+    writing/blog-1.typ
+    writing/blog-2.typ
+  properties:
+    source-path = "writing.typ" implicit(source path)
+    title = "Writing" implicit(source-heading level=1)
+  scopes declared:
+    outline:writing kind=outline name=outline root=writing.typ extent=descendants explicit order=0
+    reference:writing kind=reference name=reference root=writing.typ extent=descendants explicit order=1
+  spine:
+    global(index.typ)
+    nav(index.typ)
+    current-page(writing.typ)
+    outline(writing.typ)
+    reference(writing.typ)
+  projections:
+    projection:writing:outline:1 outline origin=writing.typ
+      rendering: depth=1
+      query query:writing:outline:0 origin=writing
+        selection: nodes explicit
+        filters: <none>
+        defaulted-values: hidden (use --debug-defaults)
+
+Node writing/blog-1.typ
+  id: writing/blog-1 parent=writing.typ
+  parsed-from: examples/api_sketch_site/writing/blog-1.typ
+  children:
+    <none>
+  properties:
+    source-path = "writing/blog-1.typ" implicit(source path)
+    title = "Blog 1" implicit(source-heading level=2)
+    citation = <cite> explicit(raw @cite)
+  scopes declared:
+    <none>
+  spine:
+    global(index.typ)
+    nav(index.typ)
+    outline(writing.typ)
+    reference(writing.typ)
+    current-page(writing/blog-1.typ)
+  projections:
+    projection:writing/blog-1:bibliography:1 bibliography origin=writing/blog-1.typ
+      rendering: source="works.yml", scope="current-page"
+      query query:writing/blog-1:bibliography:0 origin=writing/blog-1
+        selection: properties explicit
+        search: current-node explicit
+        filter: property.key == "citation" explicit
+        defaulted-values: hidden (use --debug-defaults)
+
+Node writing/blog-2.typ
+  id: writing/blog-2 parent=writing.typ
+  parsed-from: examples/api_sketch_site/writing/blog-2.typ
+  children:
+    <none>
+  properties:
+    source-path = "writing/blog-2.typ" implicit(source path)
+    title = "Blog 2" implicit(source-heading level=2)
+  scopes declared:
+    <none>
+  spine:
+    global(index.typ)
+    nav(index.typ)
+    outline(writing.typ)
+    reference(writing.typ)
+    current-page(writing/blog-2.typ)
+  projections:
+    projection:writing/blog-2:reference:1 reference origin=writing/blog-2.typ
+      rendering: target=<figure-1>
+      query query:writing/blog-2:reference:0 origin=writing/blog-2
+        selection: resolved-target explicit
+        filter: target == <figure-1> explicit
+        defaulted-values: hidden (use --debug-defaults)
+
+Node thesis/intro.typ
+  id: thesis/intro parent=index.typ
+  parsed-from: examples/api_sketch_site/thesis/intro.typ
+  children:
+    thesis/bib.typ
+    thesis/ch-1.typ
+  properties:
+    source-path = "thesis/intro.typ" implicit(source path)
+    title = "Thesis" implicit(source-heading level=1)
+  scopes declared:
+    outline:thesis/intro kind=outline name=outline root=thesis/intro.typ extent=descendants explicit order=0
+    reference:thesis/intro kind=reference name=reference root=thesis/intro.typ extent=descendants explicit order=1
+    bibliography:thesis/intro kind=bibliography name=bibliography root=thesis/intro.typ extent=descendants explicit order=2
+    nav:thesis/intro kind=nav name=nav root=thesis/intro.typ extent=descendants explicit order=3
+  spine:
+    global(index.typ)
+    nav(index.typ)
+    current-page(thesis/intro.typ)
+    outline(thesis/intro.typ)
+    reference(thesis/intro.typ)
+    bibliography(thesis/intro.typ)
+    nav(thesis/intro.typ)
+  projections:
+    projection:thesis/intro:outline:1 outline origin=thesis/intro.typ
+      rendering: depth=1
+      query query:thesis/intro:outline:0 origin=thesis/intro
+        selection: nodes explicit
+        filters: <none>
+        defaulted-values: hidden (use --debug-defaults)
+    projection:thesis/intro:outline:2 outline origin=thesis/intro.typ
+      rendering: title="List of Figures", target=figure.where(kind: image)
+      query query:thesis/intro:outline:1 origin=thesis/intro
+        selection: nodes explicit
+        filter: target equivalent figure.where(kind: image) explicit
+        defaulted-values: hidden (use --debug-defaults)
+
+Node thesis/bib.typ
+  id: thesis/bib parent=thesis/intro.typ
+  parsed-from: examples/api_sketch_site/thesis/bib.typ
+  children:
+    <none>
+  properties:
+    source-path = "thesis/bib.typ" implicit(source path)
+  scopes declared:
+    <none>
+  spine:
+    global(index.typ)
+    nav(index.typ)
+    outline(thesis/intro.typ)
+    reference(thesis/intro.typ)
+    bibliography(thesis/intro.typ)
+    nav(thesis/intro.typ)
+    current-page(thesis/bib.typ)
+  projections:
+    projection:thesis/bib:bibliography:1 bibliography origin=thesis/bib.typ
+      rendering: source="thesis/bibliography.bib"
+      query query:thesis/bib:bibliography:0 origin=thesis/bib
+        selection: properties explicit
+        filter: property.key == "citation" explicit
+        defaulted-values: hidden (use --debug-defaults)
+
+Node thesis/ch-1.typ
+  id: thesis/ch-1 parent=thesis/intro.typ
+  parsed-from: examples/api_sketch_site/thesis/ch-1.typ
+  children:
+    <none>
+  properties:
+    source-path = "thesis/ch-1.typ" implicit(source path)
+    citation = <bib-ref> explicit(raw @bib-ref)
+  scopes declared:
+    <none>
+  spine:
+    global(index.typ)
+    nav(index.typ)
+    outline(thesis/intro.typ)
+    reference(thesis/intro.typ)
+    bibliography(thesis/intro.typ)
+    nav(thesis/intro.typ)
+    current-page(thesis/ch-1.typ)
+  projections:
+    <none>
+
+Node cv.typ
+  id: cv parent=index.typ
+  parsed-from: examples/api_sketch_site/cv.typ
+  children:
+    <none>
+  properties:
+    source-path = "cv.typ" implicit(source path)
+    nav.suppressed = true explicit(publisher.nav.suppress)
+  scopes declared:
+    <none>
+  spine:
+    global(index.typ)
+    nav(index.typ)
+    current-page(cv.typ)
+  projections:
+    projection:cv:nav navigation origin=cv.typ suppressed=true reason=property(nav.suppressed)
+      rendering: <none>
+      query query:cv:nav origin=cv
+        filters: <none>
+        defaulted-values: hidden (use --debug-defaults)
+
+Scopes
+  global kind=global name=global root=index.typ extent=descendants implicit order=<none>
+  current-page:index kind=current-page name=current-page root=index.typ extent=current-node implicit order=<none>
+  current-page:writing kind=current-page name=current-page root=writing.typ extent=current-node implicit order=<none>
+  current-page:writing/blog-1 kind=current-page name=current-page root=writing/blog-1.typ extent=current-node implicit order=<none>
+  current-page:writing/blog-2 kind=current-page name=current-page root=writing/blog-2.typ extent=current-node implicit order=<none>
+  current-page:thesis/intro kind=current-page name=current-page root=thesis/intro.typ extent=current-node implicit order=<none>
+  current-page:thesis/bib kind=current-page name=current-page root=thesis/bib.typ extent=current-node implicit order=<none>
+  current-page:thesis/ch-1 kind=current-page name=current-page root=thesis/ch-1.typ extent=current-node implicit order=<none>
+  current-page:cv kind=current-page name=current-page root=cv.typ extent=current-node implicit order=<none>
+  nav:index kind=nav name=nav root=index.typ extent=descendants explicit order=0
+  outline:writing kind=outline name=outline root=writing.typ extent=descendants explicit order=0
+  reference:writing kind=reference name=reference root=writing.typ extent=descendants explicit order=1
+  outline:thesis/intro kind=outline name=outline root=thesis/intro.typ extent=descendants explicit order=0
+  reference:thesis/intro kind=reference name=reference root=thesis/intro.typ extent=descendants explicit order=1
+  bibliography:thesis/intro kind=bibliography name=bibliography root=thesis/intro.typ extent=descendants explicit order=2
+  nav:thesis/intro kind=nav name=nav root=thesis/intro.typ extent=descendants explicit order=3
+
+Derived Spines
+  index.typ: global(index.typ) -> current-page(index.typ) -> nav(index.typ)
+  writing.typ: global(index.typ) -> nav(index.typ) -> current-page(writing.typ) -> outline(writing.typ) -> reference(writing.typ)
+  writing/blog-1.typ: global(index.typ) -> nav(index.typ) -> outline(writing.typ) -> reference(writing.typ) -> current-page(writing/blog-1.typ)
+  writing/blog-2.typ: global(index.typ) -> nav(index.typ) -> outline(writing.typ) -> reference(writing.typ) -> current-page(writing/blog-2.typ)
+  thesis/intro.typ: global(index.typ) -> nav(index.typ) -> current-page(thesis/intro.typ) -> outline(thesis/intro.typ) -> reference(thesis/intro.typ) -> bibliography(thesis/intro.typ) -> nav(thesis/intro.typ)
+  thesis/bib.typ: global(index.typ) -> nav(index.typ) -> outline(thesis/intro.typ) -> reference(thesis/intro.typ) -> bibliography(thesis/intro.typ) -> nav(thesis/intro.typ) -> current-page(thesis/bib.typ)
+  thesis/ch-1.typ: global(index.typ) -> nav(index.typ) -> outline(thesis/intro.typ) -> reference(thesis/intro.typ) -> bibliography(thesis/intro.typ) -> nav(thesis/intro.typ) -> current-page(thesis/ch-1.typ)
+  cv.typ: global(index.typ) -> nav(index.typ) -> current-page(cv.typ)
+
+Properties
+  index.typ owns source-path = "index.typ" implicit(source path)
+  index.typ owns title = "My Publication" implicit(source-heading level=1)
+  index.typ owns nav.suppressed = true explicit(publisher.nav.suppress)
+  writing.typ owns source-path = "writing.typ" implicit(source path)
+  writing.typ owns title = "Writing" implicit(source-heading level=1)
+  writing/blog-1.typ owns source-path = "writing/blog-1.typ" implicit(source path)
+  writing/blog-1.typ owns title = "Blog 1" implicit(source-heading level=2)
+  writing/blog-1.typ owns citation = <cite> explicit(raw @cite)
+  writing/blog-2.typ owns source-path = "writing/blog-2.typ" implicit(source path)
+  writing/blog-2.typ owns title = "Blog 2" implicit(source-heading level=2)
+  thesis/intro.typ owns source-path = "thesis/intro.typ" implicit(source path)
+  thesis/intro.typ owns title = "Thesis" implicit(source-heading level=1)
+  thesis/bib.typ owns source-path = "thesis/bib.typ" implicit(source path)
+  thesis/ch-1.typ owns source-path = "thesis/ch-1.typ" implicit(source path)
+  thesis/ch-1.typ owns citation = <bib-ref> explicit(raw @bib-ref)
+  cv.typ owns source-path = "cv.typ" implicit(source path)
+  cv.typ owns nav.suppressed = true explicit(publisher.nav.suppress)
+
+Projections and Queries
+  projection:index:outline:1 outline origin=index.typ
+    rendering: depth=1
+    query query:index:outline:0 origin=index
+      selection: nodes explicit
+      filters: <none>
+      defaulted-values: hidden (use --debug-defaults)
+  projection:index:nav navigation origin=index.typ suppressed=true reason=property(nav.suppressed)
+    rendering: <none>
+    query query:index:nav origin=index
+      filters: <none>
+      defaulted-values: hidden (use --debug-defaults)
+  projection:writing:outline:1 outline origin=writing.typ
+    rendering: depth=1
+    query query:writing:outline:0 origin=writing
+      selection: nodes explicit
+      filters: <none>
+      defaulted-values: hidden (use --debug-defaults)
+  projection:writing/blog-1:bibliography:1 bibliography origin=writing/blog-1.typ
+    rendering: source="works.yml", scope="current-page"
+    query query:writing/blog-1:bibliography:0 origin=writing/blog-1
+      selection: properties explicit
+      search: current-node explicit
+      filter: property.key == "citation" explicit
+      defaulted-values: hidden (use --debug-defaults)
+  projection:writing/blog-2:reference:1 reference origin=writing/blog-2.typ
+    rendering: target=<figure-1>
+    query query:writing/blog-2:reference:0 origin=writing/blog-2
+      selection: resolved-target explicit
+      filter: target == <figure-1> explicit
+      defaulted-values: hidden (use --debug-defaults)
+  projection:thesis/intro:outline:1 outline origin=thesis/intro.typ
+    rendering: depth=1
+    query query:thesis/intro:outline:0 origin=thesis/intro
+      selection: nodes explicit
+      filters: <none>
+      defaulted-values: hidden (use --debug-defaults)
+  projection:thesis/intro:outline:2 outline origin=thesis/intro.typ
+    rendering: title="List of Figures", target=figure.where(kind: image)
+    query query:thesis/intro:outline:1 origin=thesis/intro
+      selection: nodes explicit
+      filter: target equivalent figure.where(kind: image) explicit
+      defaulted-values: hidden (use --debug-defaults)
+  projection:thesis/bib:bibliography:1 bibliography origin=thesis/bib.typ
+    rendering: source="thesis/bibliography.bib"
+    query query:thesis/bib:bibliography:0 origin=thesis/bib
+      selection: properties explicit
+      filter: property.key == "citation" explicit
+      defaulted-values: hidden (use --debug-defaults)
+  projection:cv:nav navigation origin=cv.typ suppressed=true reason=property(nav.suppressed)
+    rendering: <none>
+    query query:cv:nav origin=cv
+      filters: <none>
+      defaulted-values: hidden (use --debug-defaults)
+
+Parse Warnings
+  unreachable-typ-file drafts/unreachable.typ: unreachable Typst source file: drafts/unreachable.typ
+
+Validation Result
+  ok

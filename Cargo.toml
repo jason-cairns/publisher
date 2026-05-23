@@ -5,3 +5,6 @@ edition = "2024"
 
 [dependencies]
 typst-syntax = "0.14.2"
+
+[dev-dependencies]
+insta = "1.43.1"
