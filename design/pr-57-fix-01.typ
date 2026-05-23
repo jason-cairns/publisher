@@ -54,16 +54,6 @@ This keeps navigation behavior close to the projection model:
 - projections describe generated output and output-specific state;
 - nodes do not carry nav-output state as general-purpose properties.
 
-=== Publisher namespace
-
-For this milestone, the parser should recognize the exact publisher API calls it
-is responsible for. It should not treat bare `nav.suppress()` as equivalent to
-`publisher.nav.suppress()`.
-
-The longer-term fix is a real Typst publisher library that emits stable marker
-content for the Rust parser to detect, instead of making Rust search arbitrary
-callee strings such as `publisher.child` or `publisher.scope`.
-
 == Implementation slices
 
 === Preserve parse warnings
@@ -173,48 +163,3 @@ INSTA_UPDATE=always cargo test --test inspect_api_sketch
 cargo test --test inspect_api_sketch
 cargo test --locked
 ```
-
-== Follow-up issue
-
-Create a follow-up issue titled:
-
-```text
-Create publisher.typ API library for parser-visible publication calls
-```
-
-Issue body:
-
-```text
-The current inspect-milestone parser recognizes publisher behavior by matching
-literal callee strings such as `publisher.child`, `publisher.scope`,
-`publisher.outline`, and `publisher.nav.suppress`.
-
-That is acceptable for the narrow milestone, but it is too literal for the real
-Typst API. It prevents natural API shapes such as scope handles, aliases, and
-helper wrappers unless the Rust parser starts guessing at arbitrary Typst
-expressions.
-
-Create a local `publisher.typ` library whose functions emit stable
-parser-visible marker content. The Rust parser should detect those emitted
-markers structurally instead of searching for raw `publisher.x` call strings.
-
-Acceptance criteria:
-
-- The API sketch fixture imports the local `publisher.typ` library.
-- Publisher functions emit stable marker/content forms for child declarations,
-  scope declarations, projections, references, and nav suppression.
-- The Rust parser detects emitted markers rather than raw callee strings.
-- Existing inspect output behavior remains covered by tests.
-- The design supports future scope-handle APIs such as `let nav =
-  publisher.scope(kind: "nav"); nav.suppress()` without requiring Rust to
-  implement general Typst variable-binding semantics.
-```
-
-== Atomic commits
-
-1. Add this design plan.
-2. Preserve parser warnings with tests.
-3. Move call/projection-building logic out of `parser.rs`.
-4. Implement inherited nav projections and projection-owned suppression.
-5. Add named scope fixture/parser support and documentation updates.
-6. Replace root CI with Rust checks.
