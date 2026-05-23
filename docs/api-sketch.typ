@@ -146,8 +146,8 @@ etc.
 ```sh
 publisher --help
   usage:
-    publisher [root node]
+    publisher [root node] -T[html|pdf]
     publisher dot [tree|graph] --incl-external
-    publisher inspect
+    publisher inspect [nodes|scopes|...]
     publisher install-completions [fish|sh|zsh]
 ```
