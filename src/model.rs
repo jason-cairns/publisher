@@ -570,13 +570,13 @@ impl PropertySource {
 pub struct Query {
     pub id: QueryId,
     pub origin_node: NodeId,
-    pub selection: Authored<QuerySelection>,
-    pub search: Authored<QuerySearchRule>,
+    pub selection: SourcedValue<QuerySelection>,
+    pub search: SourcedValue<QuerySearchRule>,
     pub filters: Vec<QueryFilter>,
-    pub ordering: Authored<QueryOrdering>,
-    pub visibility: Authored<QueryVisibility>,
-    pub fallback: Authored<QueryFallback>,
-    pub ambiguity: Authored<QueryAmbiguity>,
+    pub ordering: SourcedValue<QueryOrdering>,
+    pub visibility: SourcedValue<QueryVisibility>,
+    pub fallback: SourcedValue<QueryFallback>,
+    pub ambiguity: SourcedValue<QueryAmbiguity>,
 }
 
 impl Query {
@@ -584,13 +584,13 @@ impl Query {
         Self {
             id: id.into(),
             origin_node: origin_node.into(),
-            selection: Authored::defaulted(QuerySelection::Nodes),
-            search: Authored::defaulted(QuerySearchRule::NearestScope),
+            selection: SourcedValue::defaulted(QuerySelection::Nodes),
+            search: SourcedValue::defaulted(QuerySearchRule::NearestScope),
             filters: Vec::new(),
-            ordering: Authored::defaulted(QueryOrdering::PublicationTree),
-            visibility: Authored::defaulted(QueryVisibility::VisibleFromOrigin),
-            fallback: Authored::defaulted(QueryFallback::Empty),
-            ambiguity: Authored::defaulted(QueryAmbiguity::AllowMany),
+            ordering: SourcedValue::defaulted(QueryOrdering::PublicationTree),
+            visibility: SourcedValue::defaulted(QueryVisibility::VisibleFromOrigin),
+            fallback: SourcedValue::defaulted(QueryFallback::Empty),
+            ambiguity: SourcedValue::defaulted(QueryAmbiguity::AllowMany),
         }
     }
 }
@@ -624,12 +624,12 @@ impl Projection {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Authored<T> {
+pub struct SourcedValue<T> {
     pub value: T,
     pub source: ValueSource,
 }
 
-impl<T> Authored<T> {
+impl<T> SourcedValue<T> {
     pub fn explicit(value: T) -> Self {
         Self {
             value,

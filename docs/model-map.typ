@@ -8,8 +8,8 @@ This maps the model terms in `docs/model.typ` and `design/prd-001-core-entities-
 - `Scope`: `src/model.rs` `Scope`, `ScopeKind`, and `ScopeExtent`; implicit global/current-page scopes are created by `Publication::new` and `Publication::add_node`.
 - `Spine`: `src/model.rs` `Spine`, derived by `Publication::spine_for`.
 - `Property`: `src/model.rs` `Property` and `PropertySource`; properties are node-owned and interpreted through `Publication::property_scope_context`.
-- `Query`: `src/model.rs` `Query` and related query enums; query defaults are represented with `Authored<T>`.
-- `Projection`: `src/model.rs` `Projection`, `ProjectionKind`, and `ProjectionSuppression`.
+- `Query`: `src/model.rs` `Query` and related query enums; `SourcedValue<T>` is implementation provenance for query fields, distinguishing values provided by source from parser/model defaults.
+- `Projection`: `src/model.rs` `Projection`, `ProjectionKind`, and `ProjectionSuppression`; inherited navigation and page-level navigation suppression are projection state, not node-owned properties.
 
 == Parser and fixture
 - Typst parsing: `src/parser.rs` uses `typst-syntax` to walk syntax nodes and extract supported `publisher.*` calls.

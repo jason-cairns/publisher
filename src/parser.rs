@@ -9,6 +9,9 @@ use typst_syntax::{SyntaxKind, SyntaxNode};
 
 use crate::model::*;
 
+mod calls;
+mod projections;
+
 #[derive(Debug)]
 pub enum ParseError {
     RootHasNoParent(PathBuf),
@@ -116,6 +119,12 @@ impl PublicationParser {
             }
         }
 
+        projections::add_inherited_nav_projections(
+            &mut publication,
+            &self.parsed_files,
+            &self.reachable_order,
+        );
+
         for source_path in &self.reachable_order {
             let parsed = self.parsed_files.get(source_path).unwrap();
             for query in &parsed.queries {
@@ -123,6 +132,13 @@ impl PublicationParser {
             }
             for projection in &parsed.projections {
                 publication.add_projection(projection.clone());
+            }
+        }
+
+        for source_path in &self.reachable_order {
+            let parsed = self.parsed_files.get(source_path).unwrap();
+            for warning in &parsed.warnings {
+                publication.add_parse_warning(warning.clone());
             }
         }
 
@@ -196,7 +212,7 @@ impl PublicationParser {
             }
             SyntaxKind::FuncCall => {
                 if let Some(call) = node.cast::<ast::FuncCall>() {
-                    self.record_call(parsed, call)?;
+                    calls::record_call(self, parsed, call)?;
                 }
             }
             _ => {}
@@ -204,48 +220,6 @@ impl PublicationParser {
 
         for child in node.children() {
             self.extract_from_node(child, parsed)?;
-        }
-
-        Ok(())
-    }
-
-    fn record_call(
-        &self,
-        parsed: &mut ParsedFile,
-        call: ast::FuncCall<'_>,
-    ) -> Result<(), ParseError> {
-        let callee = raw_expr(call.callee());
-        let args = CallArgs::from(call.args());
-
-        match callee.as_str() {
-            "publisher.child" => {
-                if let Some(path) = args.first_string() {
-                    parsed.child_paths.push(normalize_source_path(&path));
-                }
-            }
-            "publisher.children" => {
-                if let Some(pattern) = args.first_string() {
-                    let children = self.expand_children_glob(&parsed.source_path, &pattern)?;
-                    parsed.child_paths.extend(children);
-                }
-            }
-            "publisher.scope" => {
-                if let Some(kind) = args.named_string("kind") {
-                    parsed.record_scope(&kind);
-                }
-            }
-            "publisher.outline" => parsed.record_outline(args),
-            "publisher.bibliography" => parsed.record_bibliography(args),
-            "publisher.ref" => parsed.record_reference(args),
-            "publisher.nav.suppress" | "nav.suppress" => parsed.record_nav_suppression(),
-            _ if callee.starts_with("publisher.") => {
-                parsed.warnings.push(ParseWarning {
-                    source_path: Some(parsed.source_path.clone()),
-                    kind: ParseWarningKind::UnsupportedPublisherCall,
-                    message: format!("unsupported publisher call preserved for review: {callee}"),
-                });
-            }
-            _ => {}
         }
 
         Ok(())
@@ -367,6 +341,7 @@ struct ParsedFile {
     queries: Vec<Query>,
     projections: Vec<Projection>,
     warnings: Vec<ParseWarning>,
+    nav_suppressed: bool,
     declaration_order: usize,
     property_count: usize,
     projection_count: usize,
@@ -384,6 +359,7 @@ impl ParsedFile {
             queries: Vec::new(),
             projections: Vec::new(),
             warnings: Vec::new(),
+            nav_suppressed: false,
             declaration_order: 0,
             property_count: 0,
             projection_count: 0,
@@ -423,157 +399,7 @@ impl ParsedFile {
         ));
     }
 
-    fn record_scope(&mut self, kind: &str) {
-        let scope_kind = scope_kind(kind);
-        let scope_id = unique_scope_id(kind, &self.node_id, &self.scopes);
-        let scope = Scope::explicit(
-            scope_id,
-            scope_kind,
-            self.node_id.clone(),
-            self.declaration_order,
-        )
-        .with_name(kind);
-        self.declaration_order += 1;
-        self.scopes.push(scope);
-    }
-
-    fn record_outline(&mut self, args: CallArgs) {
-        let query_id = self.next_query_id("outline");
-        let projection_id = self.next_projection_id("outline");
-
-        let mut query = Query::new(query_id.clone(), self.node_id.clone());
-        query.selection = Authored::explicit(QuerySelection::Nodes);
-        if let Some(target) = args.named_raw("target") {
-            query.filters.push(QueryFilter {
-                target: "target".to_string(),
-                op: FilterOp::Raw("equivalent".to_string()),
-                value: Value::RawTypst(target),
-                source: ValueSource::Explicit,
-            });
-        }
-
-        let mut projection = Projection::new(
-            projection_id,
-            self.node_id.clone(),
-            ProjectionKind::Outline,
-            query_id,
-        );
-        if let Some(depth) = args.named_i64("depth") {
-            projection
-                .rendering_attributes
-                .push(Attribute::new("depth", Value::Number(depth)));
-        }
-        if let Some(title) = args.named_content_text("title") {
-            projection
-                .rendering_attributes
-                .push(Attribute::new("title", Value::String(title)));
-        }
-        if let Some(target) = args.named_raw("target") {
-            projection
-                .rendering_attributes
-                .push(Attribute::new("target", Value::RawTypst(target)));
-        }
-
-        self.queries.push(query);
-        self.projections.push(projection);
-    }
-
-    fn record_bibliography(&mut self, args: CallArgs) {
-        let query_id = self.next_query_id("bibliography");
-        let projection_id = self.next_projection_id("bibliography");
-
-        let mut query = Query::new(query_id.clone(), self.node_id.clone());
-        query.selection = Authored::explicit(QuerySelection::Properties);
-        if args.named_string("scope").as_deref() == Some("current-page") {
-            query.search = Authored::explicit(QuerySearchRule::CurrentNode);
-        }
-        query.filters.push(QueryFilter {
-            target: "property.key".to_string(),
-            op: FilterOp::Equals,
-            value: Value::String("citation".to_string()),
-            source: ValueSource::Explicit,
-        });
-
-        let mut projection = Projection::new(
-            projection_id,
-            self.node_id.clone(),
-            ProjectionKind::Bibliography,
-            query_id,
-        );
-        if let Some(source) = args.first_string() {
-            projection
-                .rendering_attributes
-                .push(Attribute::new("source", Value::String(source)));
-        }
-        if let Some(scope) = args.named_string("scope") {
-            projection
-                .rendering_attributes
-                .push(Attribute::new("scope", Value::String(scope)));
-        }
-
-        self.queries.push(query);
-        self.projections.push(projection);
-    }
-
-    fn record_reference(&mut self, args: CallArgs) {
-        let Some(target) = args.first_label() else {
-            return;
-        };
-
-        let query_id = self.next_query_id("reference");
-        let projection_id = self.next_projection_id("reference");
-        let mut query = Query::new(query_id.clone(), self.node_id.clone());
-        query.selection = Authored::explicit(QuerySelection::ResolvedTarget);
-        query.filters.push(QueryFilter {
-            target: "target".to_string(),
-            op: FilterOp::Equals,
-            value: Value::TypstLabel(target.clone()),
-            source: ValueSource::Explicit,
-        });
-
-        let mut projection = Projection::new(
-            projection_id,
-            self.node_id.clone(),
-            ProjectionKind::Reference,
-            query_id,
-        );
-        projection
-            .rendering_attributes
-            .push(Attribute::new("target", Value::TypstLabel(target)));
-
-        self.queries.push(query);
-        self.projections.push(projection);
-    }
-
-    fn record_nav_suppression(&mut self) {
-        let property_id = property_id(&self.node_id, "nav-suppressed");
-        self.properties.push(Property::new(
-            property_id,
-            self.node_id.clone(),
-            "nav.suppressed",
-            Value::Bool(true),
-            PropertySource::ExplicitPublisherCall {
-                call: "publisher.nav.suppress".to_string(),
-            },
-        ));
-
-        let query_id = QueryId::new(format!("query:{}:nav", self.node_id));
-        let projection_id = ProjectionId::new(format!("projection:{}:nav", self.node_id));
-        self.queries
-            .push(Query::new(query_id.clone(), self.node_id.clone()));
-        self.projections.push(Projection {
-            id: projection_id,
-            origin_node: self.node_id.clone(),
-            kind: ProjectionKind::Navigation,
-            query: query_id,
-            rendering_attributes: Vec::new(),
-            suppression: ProjectionSuppression::Suppressed {
-                reason: "property(nav.suppressed)".to_string(),
-            },
-        });
-    }
-
-    fn next_property_id(&mut self, key: &str) -> PropertyId {
+    pub(super) fn next_property_id(&mut self, key: &str) -> PropertyId {
         self.property_count += 1;
         PropertyId::new(format!(
             "prop:{}:{key}:{}",
@@ -581,14 +407,14 @@ impl ParsedFile {
         ))
     }
 
-    fn next_query_id(&mut self, kind: &str) -> QueryId {
+    pub(super) fn next_query_id(&mut self, kind: &str) -> QueryId {
         QueryId::new(format!(
             "query:{}:{kind}:{}",
             self.node_id, self.projection_count
         ))
     }
 
-    fn next_projection_id(&mut self, kind: &str) -> ProjectionId {
+    pub(super) fn next_projection_id(&mut self, kind: &str) -> ProjectionId {
         self.projection_count += 1;
         ProjectionId::new(format!(
             "projection:{}:{kind}:{}",
@@ -603,126 +429,6 @@ struct Title {
     text: String,
 }
 
-#[derive(Clone, Debug, Default)]
-struct CallArgs {
-    positional: Vec<ArgValue>,
-    named: BTreeMap<String, ArgValue>,
-}
-
-impl<'a> From<ast::Args<'a>> for CallArgs {
-    fn from(args: ast::Args<'a>) -> Self {
-        let mut parsed = Self::default();
-        for arg in args.items() {
-            match arg {
-                ast::Arg::Pos(expr) => parsed.positional.push(ArgValue::from_expr(expr)),
-                ast::Arg::Named(named) => {
-                    parsed.named.insert(
-                        named.name().as_str().to_string(),
-                        ArgValue::from_expr(named.expr()),
-                    );
-                }
-                ast::Arg::Spread(spread) => parsed
-                    .positional
-                    .push(ArgValue::Raw(raw_expr(spread.expr()))),
-            }
-        }
-        parsed
-    }
-}
-
-impl CallArgs {
-    fn first_string(&self) -> Option<String> {
-        self.positional
-            .iter()
-            .find_map(ArgValue::as_string)
-            .cloned()
-    }
-
-    fn first_label(&self) -> Option<String> {
-        self.positional.iter().find_map(ArgValue::as_label).cloned()
-    }
-
-    fn named_string(&self, name: &str) -> Option<String> {
-        self.named.get(name).and_then(ArgValue::as_string).cloned()
-    }
-
-    fn named_i64(&self, name: &str) -> Option<i64> {
-        self.named.get(name).and_then(ArgValue::as_i64)
-    }
-
-    fn named_content_text(&self, name: &str) -> Option<String> {
-        self.named
-            .get(name)
-            .and_then(ArgValue::as_content_text)
-            .cloned()
-    }
-
-    fn named_raw(&self, name: &str) -> Option<String> {
-        self.named.get(name).map(ArgValue::raw)
-    }
-}
-
-#[derive(Clone, Debug)]
-enum ArgValue {
-    String(String),
-    Number(i64),
-    Label(String),
-    ContentText(String),
-    Raw(String),
-}
-
-impl ArgValue {
-    fn from_expr(expr: ast::Expr<'_>) -> Self {
-        match expr {
-            ast::Expr::Str(value) => Self::String(value.get().to_string()),
-            ast::Expr::Int(value) => Self::Number(value.get()),
-            ast::Expr::Label(value) => Self::Label(value.get().to_string()),
-            ast::Expr::ContentBlock(value) => {
-                Self::ContentText(plain_markup(value.body().to_untyped()))
-            }
-            _ => Self::Raw(raw_expr(expr)),
-        }
-    }
-
-    fn as_string(&self) -> Option<&String> {
-        match self {
-            Self::String(value) => Some(value),
-            _ => None,
-        }
-    }
-
-    fn as_i64(&self) -> Option<i64> {
-        match self {
-            Self::Number(value) => Some(*value),
-            _ => None,
-        }
-    }
-
-    fn as_label(&self) -> Option<&String> {
-        match self {
-            Self::Label(value) => Some(value),
-            _ => None,
-        }
-    }
-
-    fn as_content_text(&self) -> Option<&String> {
-        match self {
-            Self::ContentText(value) => Some(value),
-            _ => None,
-        }
-    }
-
-    fn raw(&self) -> String {
-        match self {
-            Self::String(value) => format!("{value:?}"),
-            Self::Number(value) => value.to_string(),
-            Self::Label(value) => format!("<{value}>"),
-            Self::ContentText(value) => format!("[{value}]"),
-            Self::Raw(value) => value.clone(),
-        }
-    }
-}
-
 fn add_source_path_property(publication: &mut Publication, parsed: &ParsedFile) {
     publication.add_property(Property::new(
         property_id(&parsed.node_id, "source-path"),
@@ -735,11 +441,7 @@ fn add_source_path_property(publication: &mut Publication, parsed: &ParsedFile) 
     ));
 }
 
-fn raw_expr(expr: ast::Expr<'_>) -> String {
-    expr.to_untyped().clone().into_text().to_string()
-}
-
-fn plain_markup(node: &SyntaxNode) -> String {
+pub(super) fn plain_markup(node: &SyntaxNode) -> String {
     let mut text = String::new();
     collect_plain_text(node, &mut text);
     text.split_whitespace().collect::<Vec<_>>().join(" ")
@@ -760,11 +462,11 @@ fn node_id(source_path: &str) -> NodeId {
     NodeId::new(source_path.trim_end_matches(".typ"))
 }
 
-fn property_id(node_id: &NodeId, key: &str) -> PropertyId {
+pub(super) fn property_id(node_id: &NodeId, key: &str) -> PropertyId {
     PropertyId::new(format!("prop:{node_id}:{key}"))
 }
 
-fn unique_scope_id(kind: &str, node_id: &NodeId, scopes: &[Scope]) -> ScopeId {
+pub(super) fn unique_scope_id(kind: &str, node_id: &NodeId, scopes: &[Scope]) -> ScopeId {
     let base = format!("{kind}:{node_id}");
     if !scopes.iter().any(|scope| scope.id.as_str() == base) {
         return ScopeId::new(base);
@@ -783,7 +485,7 @@ fn unique_scope_id(kind: &str, node_id: &NodeId, scopes: &[Scope]) -> ScopeId {
     }
 }
 
-fn scope_kind(kind: &str) -> ScopeKind {
+pub(super) fn scope_kind(kind: &str) -> ScopeKind {
     match kind {
         "nav" => ScopeKind::Nav,
         "outline" => ScopeKind::Outline,
@@ -793,6 +495,6 @@ fn scope_kind(kind: &str) -> ScopeKind {
     }
 }
 
-fn normalize_source_path(path: &str) -> String {
+pub(super) fn normalize_source_path(path: &str) -> String {
     path.replace('\\', "/")
 }

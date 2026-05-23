@@ -6,9 +6,9 @@ Publication
   root: index.typ
   nodes: 8
   scopes: 16
-  properties: 17
-  queries: 9
-  projections: 9
+  properties: 15
+  queries: 18
+  projections: 18
   warnings: 1
   validation-errors: 0
 
@@ -32,7 +32,6 @@ Node index.typ
   properties:
     source-path = "index.typ" implicit(source path)
     title = "My Publication" implicit(source-heading level=1)
-    nav.suppressed = true explicit(publisher.nav.suppress)
   scopes declared:
     nav:index kind=nav name=nav root=index.typ extent=descendants explicit order=0
   spine:
@@ -40,15 +39,17 @@ Node index.typ
     current-page(index.typ)
     nav(index.typ)
   projections:
+    projection:index:nav:nav:index:1 navigation origin=index.typ suppressed=true reason=publisher.nav.suppress()
+      rendering: scope="nav:index", scope-root="index"
+      query query:index:nav:nav:index:1 origin=index
+        selection: nodes explicit
+        search: named-scope(nav:index) explicit
+        filter: scope.id == "nav:index" explicit
+        defaulted-values: hidden (use --debug-defaults)
     projection:index:outline:1 outline origin=index.typ
       rendering: depth=1
       query query:index:outline:0 origin=index
         selection: nodes explicit
-        filters: <none>
-        defaulted-values: hidden (use --debug-defaults)
-    projection:index:nav navigation origin=index.typ suppressed=true reason=property(nav.suppressed)
-      rendering: <none>
-      query query:index:nav origin=index
         filters: <none>
         defaulted-values: hidden (use --debug-defaults)
 
@@ -71,6 +72,13 @@ Node writing.typ
     outline(writing.typ)
     reference(writing.typ)
   projections:
+    projection:writing:nav:nav:index:1 navigation origin=writing.typ
+      rendering: scope="nav:index", scope-root="index"
+      query query:writing:nav:nav:index:1 origin=writing
+        selection: nodes explicit
+        search: named-scope(nav:index) explicit
+        filter: scope.id == "nav:index" explicit
+        defaulted-values: hidden (use --debug-defaults)
     projection:writing:outline:1 outline origin=writing.typ
       rendering: depth=1
       query query:writing:outline:0 origin=writing
@@ -96,6 +104,13 @@ Node writing/blog-1.typ
     reference(writing.typ)
     current-page(writing/blog-1.typ)
   projections:
+    projection:writing/blog-1:nav:nav:index:1 navigation origin=writing/blog-1.typ
+      rendering: scope="nav:index", scope-root="index"
+      query query:writing/blog-1:nav:nav:index:1 origin=writing/blog-1
+        selection: nodes explicit
+        search: named-scope(nav:index) explicit
+        filter: scope.id == "nav:index" explicit
+        defaulted-values: hidden (use --debug-defaults)
     projection:writing/blog-1:bibliography:1 bibliography origin=writing/blog-1.typ
       rendering: source="works.yml", scope="current-page"
       query query:writing/blog-1:bibliography:0 origin=writing/blog-1
@@ -121,6 +136,13 @@ Node writing/blog-2.typ
     reference(writing.typ)
     current-page(writing/blog-2.typ)
   projections:
+    projection:writing/blog-2:nav:nav:index:1 navigation origin=writing/blog-2.typ
+      rendering: scope="nav:index", scope-root="index"
+      query query:writing/blog-2:nav:nav:index:1 origin=writing/blog-2
+        selection: nodes explicit
+        search: named-scope(nav:index) explicit
+        filter: scope.id == "nav:index" explicit
+        defaulted-values: hidden (use --debug-defaults)
     projection:writing/blog-2:reference:1 reference origin=writing/blog-2.typ
       rendering: target=<figure-1>
       query query:writing/blog-2:reference:0 origin=writing/blog-2
@@ -151,6 +173,20 @@ Node thesis/intro.typ
     bibliography(thesis/intro.typ)
     nav(thesis/intro.typ)
   projections:
+    projection:thesis/intro:nav:nav:index:1 navigation origin=thesis/intro.typ
+      rendering: scope="nav:index", scope-root="index"
+      query query:thesis/intro:nav:nav:index:1 origin=thesis/intro
+        selection: nodes explicit
+        search: named-scope(nav:index) explicit
+        filter: scope.id == "nav:index" explicit
+        defaulted-values: hidden (use --debug-defaults)
+    projection:thesis/intro:nav:nav:thesis/intro:2 navigation origin=thesis/intro.typ
+      rendering: scope="nav:thesis/intro", scope-root="thesis/intro"
+      query query:thesis/intro:nav:nav:thesis/intro:2 origin=thesis/intro
+        selection: nodes explicit
+        search: named-scope(nav:thesis/intro) explicit
+        filter: scope.id == "nav:thesis/intro" explicit
+        defaulted-values: hidden (use --debug-defaults)
     projection:thesis/intro:outline:1 outline origin=thesis/intro.typ
       rendering: depth=1
       query query:thesis/intro:outline:0 origin=thesis/intro
@@ -182,6 +218,20 @@ Node thesis/bib.typ
     nav(thesis/intro.typ)
     current-page(thesis/bib.typ)
   projections:
+    projection:thesis/bib:nav:nav:index:1 navigation origin=thesis/bib.typ
+      rendering: scope="nav:index", scope-root="index"
+      query query:thesis/bib:nav:nav:index:1 origin=thesis/bib
+        selection: nodes explicit
+        search: named-scope(nav:index) explicit
+        filter: scope.id == "nav:index" explicit
+        defaulted-values: hidden (use --debug-defaults)
+    projection:thesis/bib:nav:nav:thesis/intro:2 navigation origin=thesis/bib.typ
+      rendering: scope="nav:thesis/intro", scope-root="thesis/intro"
+      query query:thesis/bib:nav:nav:thesis/intro:2 origin=thesis/bib
+        selection: nodes explicit
+        search: named-scope(nav:thesis/intro) explicit
+        filter: scope.id == "nav:thesis/intro" explicit
+        defaulted-values: hidden (use --debug-defaults)
     projection:thesis/bib:bibliography:1 bibliography origin=thesis/bib.typ
       rendering: source="thesis/bibliography.bib"
       query query:thesis/bib:bibliography:0 origin=thesis/bib
@@ -208,7 +258,20 @@ Node thesis/ch-1.typ
     nav(thesis/intro.typ)
     current-page(thesis/ch-1.typ)
   projections:
-    <none>
+    projection:thesis/ch-1:nav:nav:index:1 navigation origin=thesis/ch-1.typ
+      rendering: scope="nav:index", scope-root="index"
+      query query:thesis/ch-1:nav:nav:index:1 origin=thesis/ch-1
+        selection: nodes explicit
+        search: named-scope(nav:index) explicit
+        filter: scope.id == "nav:index" explicit
+        defaulted-values: hidden (use --debug-defaults)
+    projection:thesis/ch-1:nav:nav:thesis/intro:2 navigation origin=thesis/ch-1.typ
+      rendering: scope="nav:thesis/intro", scope-root="thesis/intro"
+      query query:thesis/ch-1:nav:nav:thesis/intro:2 origin=thesis/ch-1
+        selection: nodes explicit
+        search: named-scope(nav:thesis/intro) explicit
+        filter: scope.id == "nav:thesis/intro" explicit
+        defaulted-values: hidden (use --debug-defaults)
 
 Node cv.typ
   id: cv parent=index.typ
@@ -217,7 +280,6 @@ Node cv.typ
     <none>
   properties:
     source-path = "cv.typ" implicit(source path)
-    nav.suppressed = true explicit(publisher.nav.suppress)
   scopes declared:
     <none>
   spine:
@@ -225,10 +287,12 @@ Node cv.typ
     nav(index.typ)
     current-page(cv.typ)
   projections:
-    projection:cv:nav navigation origin=cv.typ suppressed=true reason=property(nav.suppressed)
-      rendering: <none>
-      query query:cv:nav origin=cv
-        filters: <none>
+    projection:cv:nav:nav:index:1 navigation origin=cv.typ suppressed=true reason=publisher.nav.suppress()
+      rendering: scope="nav:index", scope-root="index"
+      query query:cv:nav:nav:index:1 origin=cv
+        selection: nodes explicit
+        search: named-scope(nav:index) explicit
+        filter: scope.id == "nav:index" explicit
         defaulted-values: hidden (use --debug-defaults)
 
 Scopes
@@ -262,7 +326,6 @@ Derived Spines
 Properties
   index.typ owns source-path = "index.typ" implicit(source path)
   index.typ owns title = "My Publication" implicit(source-heading level=1)
-  index.typ owns nav.suppressed = true explicit(publisher.nav.suppress)
   writing.typ owns source-path = "writing.typ" implicit(source path)
   writing.typ owns title = "Writing" implicit(source-heading level=1)
   writing/blog-1.typ owns source-path = "writing/blog-1.typ" implicit(source path)
@@ -276,18 +339,89 @@ Properties
   thesis/ch-1.typ owns source-path = "thesis/ch-1.typ" implicit(source path)
   thesis/ch-1.typ owns citation = <bib-ref> explicit(raw @bib-ref)
   cv.typ owns source-path = "cv.typ" implicit(source path)
-  cv.typ owns nav.suppressed = true explicit(publisher.nav.suppress)
 
 Projections and Queries
+  projection:index:nav:nav:index:1 navigation origin=index.typ suppressed=true reason=publisher.nav.suppress()
+    rendering: scope="nav:index", scope-root="index"
+    query query:index:nav:nav:index:1 origin=index
+      selection: nodes explicit
+      search: named-scope(nav:index) explicit
+      filter: scope.id == "nav:index" explicit
+      defaulted-values: hidden (use --debug-defaults)
+  projection:writing:nav:nav:index:1 navigation origin=writing.typ
+    rendering: scope="nav:index", scope-root="index"
+    query query:writing:nav:nav:index:1 origin=writing
+      selection: nodes explicit
+      search: named-scope(nav:index) explicit
+      filter: scope.id == "nav:index" explicit
+      defaulted-values: hidden (use --debug-defaults)
+  projection:writing/blog-1:nav:nav:index:1 navigation origin=writing/blog-1.typ
+    rendering: scope="nav:index", scope-root="index"
+    query query:writing/blog-1:nav:nav:index:1 origin=writing/blog-1
+      selection: nodes explicit
+      search: named-scope(nav:index) explicit
+      filter: scope.id == "nav:index" explicit
+      defaulted-values: hidden (use --debug-defaults)
+  projection:writing/blog-2:nav:nav:index:1 navigation origin=writing/blog-2.typ
+    rendering: scope="nav:index", scope-root="index"
+    query query:writing/blog-2:nav:nav:index:1 origin=writing/blog-2
+      selection: nodes explicit
+      search: named-scope(nav:index) explicit
+      filter: scope.id == "nav:index" explicit
+      defaulted-values: hidden (use --debug-defaults)
+  projection:thesis/intro:nav:nav:index:1 navigation origin=thesis/intro.typ
+    rendering: scope="nav:index", scope-root="index"
+    query query:thesis/intro:nav:nav:index:1 origin=thesis/intro
+      selection: nodes explicit
+      search: named-scope(nav:index) explicit
+      filter: scope.id == "nav:index" explicit
+      defaulted-values: hidden (use --debug-defaults)
+  projection:thesis/intro:nav:nav:thesis/intro:2 navigation origin=thesis/intro.typ
+    rendering: scope="nav:thesis/intro", scope-root="thesis/intro"
+    query query:thesis/intro:nav:nav:thesis/intro:2 origin=thesis/intro
+      selection: nodes explicit
+      search: named-scope(nav:thesis/intro) explicit
+      filter: scope.id == "nav:thesis/intro" explicit
+      defaulted-values: hidden (use --debug-defaults)
+  projection:thesis/bib:nav:nav:index:1 navigation origin=thesis/bib.typ
+    rendering: scope="nav:index", scope-root="index"
+    query query:thesis/bib:nav:nav:index:1 origin=thesis/bib
+      selection: nodes explicit
+      search: named-scope(nav:index) explicit
+      filter: scope.id == "nav:index" explicit
+      defaulted-values: hidden (use --debug-defaults)
+  projection:thesis/bib:nav:nav:thesis/intro:2 navigation origin=thesis/bib.typ
+    rendering: scope="nav:thesis/intro", scope-root="thesis/intro"
+    query query:thesis/bib:nav:nav:thesis/intro:2 origin=thesis/bib
+      selection: nodes explicit
+      search: named-scope(nav:thesis/intro) explicit
+      filter: scope.id == "nav:thesis/intro" explicit
+      defaulted-values: hidden (use --debug-defaults)
+  projection:thesis/ch-1:nav:nav:index:1 navigation origin=thesis/ch-1.typ
+    rendering: scope="nav:index", scope-root="index"
+    query query:thesis/ch-1:nav:nav:index:1 origin=thesis/ch-1
+      selection: nodes explicit
+      search: named-scope(nav:index) explicit
+      filter: scope.id == "nav:index" explicit
+      defaulted-values: hidden (use --debug-defaults)
+  projection:thesis/ch-1:nav:nav:thesis/intro:2 navigation origin=thesis/ch-1.typ
+    rendering: scope="nav:thesis/intro", scope-root="thesis/intro"
+    query query:thesis/ch-1:nav:nav:thesis/intro:2 origin=thesis/ch-1
+      selection: nodes explicit
+      search: named-scope(nav:thesis/intro) explicit
+      filter: scope.id == "nav:thesis/intro" explicit
+      defaulted-values: hidden (use --debug-defaults)
+  projection:cv:nav:nav:index:1 navigation origin=cv.typ suppressed=true reason=publisher.nav.suppress()
+    rendering: scope="nav:index", scope-root="index"
+    query query:cv:nav:nav:index:1 origin=cv
+      selection: nodes explicit
+      search: named-scope(nav:index) explicit
+      filter: scope.id == "nav:index" explicit
+      defaulted-values: hidden (use --debug-defaults)
   projection:index:outline:1 outline origin=index.typ
     rendering: depth=1
     query query:index:outline:0 origin=index
       selection: nodes explicit
-      filters: <none>
-      defaulted-values: hidden (use --debug-defaults)
-  projection:index:nav navigation origin=index.typ suppressed=true reason=property(nav.suppressed)
-    rendering: <none>
-    query query:index:nav origin=index
       filters: <none>
       defaulted-values: hidden (use --debug-defaults)
   projection:writing:outline:1 outline origin=writing.typ
@@ -326,11 +460,6 @@ Projections and Queries
     query query:thesis/bib:bibliography:0 origin=thesis/bib
       selection: properties explicit
       filter: property.key == "citation" explicit
-      defaulted-values: hidden (use --debug-defaults)
-  projection:cv:nav navigation origin=cv.typ suppressed=true reason=property(nav.suppressed)
-    rendering: <none>
-    query query:cv:nav origin=cv
-      filters: <none>
       defaulted-values: hidden (use --debug-defaults)
 
 Parse Warnings

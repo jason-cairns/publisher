@@ -43,16 +43,15 @@ fn spines_are_ordered_global_to_nearest() {
 }
 
 #[test]
-fn properties_are_node_owned_and_scope_interpreted() {
+fn nav_suppression_is_projection_owned() {
     let publication = representative_publication();
 
-    let nav_suppression = publication
-        .property(&PropertyId::from("prop:index:nav-suppressed"))
-        .unwrap();
-
-    assert_eq!(nav_suppression.owning_node, NodeId::from("index"));
-    assert_eq!(nav_suppression.key, "nav.suppressed");
-    assert_eq!(nav_suppression.value, Value::Bool(true));
+    assert!(
+        !publication
+            .properties
+            .iter()
+            .any(|property| property.key == "nav.suppressed")
+    );
 
     let global_scope = publication.scope(&ScopeId::from("global")).unwrap();
     assert!(global_scope.attributes.is_empty());
@@ -64,7 +63,7 @@ fn properties_are_node_owned_and_scope_interpreted() {
     }));
 
     let context = publication
-        .property_scope_context(&PropertyId::from("prop:index:nav-suppressed"))
+        .property_scope_context(&PropertyId::from("prop:index:source-path"))
         .unwrap();
     assert_eq!(
         context.scopes,
@@ -81,7 +80,7 @@ fn properties_are_node_owned_and_scope_interpreted() {
     assert_eq!(
         nav_projection.suppression,
         ProjectionSuppression::Suppressed {
-            reason: "property(nav.suppressed)".to_string()
+            reason: "publisher.nav.suppress()".to_string()
         }
     );
 }
@@ -198,16 +197,6 @@ fn representative_publication() -> Publication {
             reason: "source path".to_string(),
         },
     ));
-    publication.add_property(Property::new(
-        "prop:index:nav-suppressed",
-        "index",
-        "nav.suppressed",
-        Value::Bool(true),
-        PropertySource::ExplicitPublisherCall {
-            call: "nav.suppress".to_string(),
-        },
-    ));
-
     publication.add_query(Query::new("query:index:nav", "index"));
     publication.add_projection(Projection {
         id: ProjectionId::from("projection:index:nav"),
@@ -216,7 +205,7 @@ fn representative_publication() -> Publication {
         query: QueryId::from("query:index:nav"),
         rendering_attributes: Vec::new(),
         suppression: ProjectionSuppression::Suppressed {
-            reason: "property(nav.suppressed)".to_string(),
+            reason: "publisher.nav.suppress()".to_string(),
         },
     });
 

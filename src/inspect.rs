@@ -278,7 +278,7 @@ fn write_query(out: &mut String, query: &Query, depth: usize, options: &InspectO
         query.id, query.origin_node
     )
     .unwrap();
-    write_authored(
+    write_sourced_value(
         out,
         depth + 1,
         "selection",
@@ -286,7 +286,7 @@ fn write_query(out: &mut String, query: &Query, depth: usize, options: &InspectO
         query_selection,
         options,
     );
-    write_authored(
+    write_sourced_value(
         out,
         depth + 1,
         "search",
@@ -309,7 +309,7 @@ fn write_query(out: &mut String, query: &Query, depth: usize, options: &InspectO
             .unwrap();
         }
     }
-    write_authored(
+    write_sourced_value(
         out,
         depth + 1,
         "ordering",
@@ -317,7 +317,7 @@ fn write_query(out: &mut String, query: &Query, depth: usize, options: &InspectO
         query_ordering,
         options,
     );
-    write_authored(
+    write_sourced_value(
         out,
         depth + 1,
         "visibility",
@@ -325,7 +325,7 @@ fn write_query(out: &mut String, query: &Query, depth: usize, options: &InspectO
         query_visibility,
         options,
     );
-    write_authored(
+    write_sourced_value(
         out,
         depth + 1,
         "fallback",
@@ -333,7 +333,7 @@ fn write_query(out: &mut String, query: &Query, depth: usize, options: &InspectO
         query_fallback,
         options,
     );
-    write_authored(
+    write_sourced_value(
         out,
         depth + 1,
         "ambiguity",
@@ -350,21 +350,21 @@ fn write_query(out: &mut String, query: &Query, depth: usize, options: &InspectO
     }
 }
 
-fn write_authored<T>(
+fn write_sourced_value<T>(
     out: &mut String,
     depth: usize,
     label: &str,
-    authored: &Authored<T>,
+    sourced_value: &SourcedValue<T>,
     format: fn(&T) -> String,
     options: &InspectOptions,
 ) {
-    if authored.is_explicit() || options.debug_defaults {
+    if sourced_value.is_explicit() || options.debug_defaults {
         let indent = "  ".repeat(depth);
         writeln!(
             out,
             "{indent}{label}: {} {}",
-            format(&authored.value),
-            value_source(authored.source.clone())
+            format(&sourced_value.value),
+            value_source(sourced_value.source.clone())
         )
         .unwrap();
     }
