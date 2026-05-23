@@ -80,7 +80,11 @@ query {
 - Navigation may select nodes from the current scope, nearest scope, all active scopes, named scopes, or scopes matching attributes.
 - Navigation is ordered by the publication tree unless another order is specified.
 - Navigation may use the origin node to determine active state.
-- Stacked navigation is represented by multiple navigation projections or by one projection with multiple scope-selecting queries.
+- A navigation scope creates navigation projections for its root node and covered child nodes.
+- A child node covered by an inherited navigation scope receives a navigation projection connected to that scope.
+- Stacked navigation is represented by multiple navigation projections.
+- `publisher.nav.suppress()` suppresses the affected navigation projection on the page where it appears.
+- Navigation suppression is projection state, not a node-owned `nav.suppressed` property.
 
 === Table of contents
 - A table of contents is a projection.

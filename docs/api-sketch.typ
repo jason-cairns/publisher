@@ -55,7 +55,7 @@ Here are the contents:
 = Writing // implicitly creates a title property with value "Writing"
 
 #publisher.children("writing/*.typ") // declares children by file glob
-#publisher.scope(kind: "outline") // Creates a new scope for all contents, shadowing parent scope, so only writing contents will be shown.
+#publisher.scope(kind: "outline", name: "Writing") // Creates a named scope for all contents, shadowing parent scope, so only writing contents will be shown.
 #publisher.scope(kind: "reference") // "name" field defaults to page title
 
 // multiple scopes, could be #publisher.scope(kind: ("outline", "reference"))
@@ -114,7 +114,7 @@ it is found under.
   title: [List of Figures],
   target: figure.where(kind: image),
 )
-#publisher.scope(kind: "nav") // creates a new "nav" scope. This page and all children will have a nav bar. This is a second nav bar, below the inherited nav bar.
+#publisher.scope(kind: "nav") // creates a new "nav" scope. This page and all children inherit another nav projection. This stacks below the inherited nav projection.
 ```
 
 == thesis/ch-1.typ
