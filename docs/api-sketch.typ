@@ -43,8 +43,8 @@ Here are the contents:
 #publisher.child("writing.typ")
 #publisher.child("thesis/intro.typ")
 #publisher.child("cv.typ")
-#publisher.scope(kind: "nav") // creates a new "nav" scope. This page and all children inherit a nav projection.
-#publisher.nav.suppress() // suppresses this page's inherited nav projection. Child pages still have one.
+#let nav = publisher.scope(kind: "nav") // creates a new "nav" scope. This page and all children will have a nav bar.
+#nav.suppress() // suppress the nav for this page. Child pages will still have one.
 ```
 
 == writing.typ
@@ -134,7 +134,7 @@ it is found under.
 == cv.typ
 
 ```typ
-#publisher.nav.suppress()
+#nav.suppress()
 
 about me
 
