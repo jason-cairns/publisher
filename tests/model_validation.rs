@@ -1,0 +1,224 @@
+use publisher::*;
+
+#[test]
+fn current_page_scopes_do_not_flow_to_children() {
+    let publication = representative_publication();
+
+    let root_spine = publication.spine_for(&NodeId::from("index")).unwrap();
+    let child_spine = publication.spine_for(&NodeId::from("writing")).unwrap();
+
+    assert!(
+        root_spine
+            .scopes
+            .contains(&ScopeId::from("current-page:index"))
+    );
+    assert!(
+        !child_spine
+            .scopes
+            .contains(&ScopeId::from("current-page:index"))
+    );
+    assert!(
+        child_spine
+            .scopes
+            .contains(&ScopeId::from("current-page:writing"))
+    );
+}
+
+#[test]
+fn spines_are_ordered_global_to_nearest() {
+    let publication = representative_publication();
+
+    let spine = publication.spine_for(&NodeId::from("writing")).unwrap();
+
+    assert_eq!(
+        spine.scopes,
+        vec![
+            ScopeId::from("global"),
+            ScopeId::from("nav:index"),
+            ScopeId::from("current-page:writing"),
+            ScopeId::from("outline:writing"),
+            ScopeId::from("reference:writing"),
+        ]
+    );
+}
+
+#[test]
+fn properties_are_node_owned_and_scope_interpreted() {
+    let publication = representative_publication();
+
+    let nav_suppression = publication
+        .property(&PropertyId::from("prop:index:nav-suppressed"))
+        .unwrap();
+
+    assert_eq!(nav_suppression.owning_node, NodeId::from("index"));
+    assert_eq!(nav_suppression.key, "nav.suppressed");
+    assert_eq!(nav_suppression.value, Value::Bool(true));
+
+    let global_scope = publication.scope(&ScopeId::from("global")).unwrap();
+    assert!(global_scope.attributes.is_empty());
+    assert!(!publication.scopes.iter().any(|scope| {
+        scope
+            .attributes
+            .iter()
+            .any(|attribute| attribute.key == "nav.suppressed")
+    }));
+
+    let context = publication
+        .property_scope_context(&PropertyId::from("prop:index:nav-suppressed"))
+        .unwrap();
+    assert_eq!(
+        context.scopes,
+        vec![
+            ScopeId::from("global"),
+            ScopeId::from("current-page:index"),
+            ScopeId::from("nav:index")
+        ]
+    );
+
+    let nav_projection = publication
+        .projection(&ProjectionId::from("projection:index:nav"))
+        .unwrap();
+    assert_eq!(
+        nav_projection.suppression,
+        ProjectionSuppression::Suppressed {
+            reason: "property(nav.suppressed)".to_string()
+        }
+    );
+}
+
+#[test]
+fn validation_reports_core_model_errors_and_parse_warnings() {
+    let mut publication = Publication::new(Node::new("index", "index.typ"));
+    publication.add_node(Node::new("dup", "index.typ"));
+
+    let mut parent_a = Node::new("a", "a.typ");
+    parent_a.children = vec![NodeId::from("missing"), NodeId::from("child")];
+    publication.add_node(parent_a);
+
+    let mut parent_b = Node::new("b", "b.typ");
+    parent_b.children = vec![NodeId::from("child")];
+    publication.add_node(parent_b);
+    publication.add_node(Node::new("child", "child.typ"));
+
+    publication.add_scope(Scope::explicit(
+        "duplicate-scope",
+        ScopeKind::Nav,
+        "index",
+        0,
+    ));
+    publication.add_scope(Scope::explicit(
+        "duplicate-scope",
+        ScopeKind::Outline,
+        "index",
+        1,
+    ));
+    publication.add_scope(Scope::explicit(
+        "invalid-root",
+        ScopeKind::Reference,
+        "missing-root",
+        2,
+    ));
+
+    publication.add_query(Query::new("query:missing-origin", "missing-origin"));
+    publication.add_projection(Projection::new(
+        "projection:missing-origin",
+        "missing-origin",
+        ProjectionKind::Outline,
+        "query:missing",
+    ));
+    publication.add_parse_warning(ParseWarning::unreachable_typ_file("unused.typ"));
+
+    let report = publication.validate();
+
+    assert!(report.errors.iter().any(|error| matches!(
+        error,
+        ValidationError::DuplicateNodeSourcePath { source_path, .. } if source_path == "index.typ"
+    )));
+    assert!(report.errors.iter().any(|error| matches!(
+        error,
+        ValidationError::MissingChildTarget { child, .. } if child == &NodeId::from("missing")
+    )));
+    assert!(report.errors.iter().any(|error| matches!(
+        error,
+        ValidationError::MultipleParents { child, .. } if child == &NodeId::from("child")
+    )));
+    assert!(report.errors.iter().any(|error| matches!(
+        error,
+        ValidationError::DuplicateScopeId { scope_id } if scope_id == &ScopeId::from("duplicate-scope")
+    )));
+    assert!(report.errors.iter().any(|error| matches!(
+        error,
+        ValidationError::InvalidScopeRoot { scope_id, .. } if scope_id == &ScopeId::from("invalid-root")
+    )));
+    assert!(report.errors.iter().any(|error| matches!(
+        error,
+        ValidationError::MissingQueryOrigin { query_id, .. } if query_id == &QueryId::from("query:missing-origin")
+    )));
+    assert!(report.errors.iter().any(|error| matches!(
+        error,
+        ValidationError::MissingProjectionOrigin { projection_id, .. } if projection_id == &ProjectionId::from("projection:missing-origin")
+    )));
+    assert!(report.errors.iter().any(|error| matches!(
+        error,
+        ValidationError::MissingProjectionQuery { projection_id, .. } if projection_id == &ProjectionId::from("projection:missing-origin")
+    )));
+    assert_eq!(
+        report.warnings,
+        vec![ParseWarning::unreachable_typ_file("unused.typ")]
+    );
+}
+
+fn representative_publication() -> Publication {
+    let mut root = Node::new("index", "index.typ");
+    root.children = vec![NodeId::from("writing")];
+
+    let mut publication = Publication::new(root);
+    publication.add_node(Node::new("writing", "writing.typ").with_parent("index"));
+
+    publication.add_scope(Scope::explicit("nav:index", ScopeKind::Nav, "index", 0));
+    publication.add_scope(Scope::explicit(
+        "outline:writing",
+        ScopeKind::Outline,
+        "writing",
+        0,
+    ));
+    publication.add_scope(Scope::explicit(
+        "reference:writing",
+        ScopeKind::Reference,
+        "writing",
+        1,
+    ));
+
+    publication.add_property(Property::new(
+        "prop:index:source-path",
+        "index",
+        "source-path",
+        Value::String("index.typ".to_string()),
+        PropertySource::Implicit {
+            reason: "source path".to_string(),
+        },
+    ));
+    publication.add_property(Property::new(
+        "prop:index:nav-suppressed",
+        "index",
+        "nav.suppressed",
+        Value::Bool(true),
+        PropertySource::ExplicitPublisherCall {
+            call: "nav.suppress".to_string(),
+        },
+    ));
+
+    publication.add_query(Query::new("query:index:nav", "index"));
+    publication.add_projection(Projection {
+        id: ProjectionId::from("projection:index:nav"),
+        origin_node: NodeId::from("index"),
+        kind: ProjectionKind::Navigation,
+        query: QueryId::from("query:index:nav"),
+        rendering_attributes: Vec::new(),
+        suppression: ProjectionSuppression::Suppressed {
+            reason: "property(nav.suppressed)".to_string(),
+        },
+    });
+
+    publication
+}
