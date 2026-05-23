@@ -1,0 +1,4 @@
+- Don't invent things -- if a reasonable library exists to do something, use it.
+- Don't overcomplicate things -- if you're reaching for a pattern, you're probably overcomplicating it.
+- Use structured data construction, not string manipulation.
+- The code should read well, like a DSL.
