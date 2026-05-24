@@ -147,12 +147,12 @@ drafts/unreachable.typ is intentionally unreachable
 By the end of this milestone:
 
 1. A rendering module exists in the Rust library.
-2. The renderer can generate a Typst assembly document from a `Publication`.
+2. The renderer can generate per-node Typst render sources from a `Publication`.
 3. Projection output is visible as explicit placeholders for outline, navigation, bibliography, and reference projections.
 4. The placeholders include useful inspect-level detail such as projection kind, origin node, suppression state, rendering attributes, and query shape.
 5. The example command `cargo run --example api_sketch` parses, validates, inspects, and writes the PDF and HTML files.
-6. The PDF and HTML files are produced through the Typst Rust crate stack from the generated assembly document.
-7. Tests verify that the generated assembly contains the publication nodes and placeholder projection detail.
+6. The PDF and HTML files are produced through the Typst Rust crate stack from generated `.typ` files, not virtual in-memory fixtures.
+7. Tests verify that per-node HTML contains rendered source content, inherited projection placeholders, and no inspect-style source/model metadata dump.
 8. The implementation keeps query evaluation as a non-goal.
 
 ## Non-goals
@@ -177,31 +177,28 @@ Use one of these structural approaches instead:
 - introduce a narrow typed render IR, such as `AssemblyDocument`, if direct Typst syntax rewriting is awkward;
 - serialize to `.typ` only at the boundary after the structured representation has been built.
 
-The persisted `api-sketch.typ` remains useful as a review and debugging artifact, but it is not the renderer's internal programming model. Treat the `.typ` file as serialized output from a structural assembly, not as a pile of concatenated strings.
+The persisted `.typ` files remain useful as review and debugging artifacts, but they are not the renderer's internal programming model. Treat generated `.typ` files as serialized output from a structural render source, not as a pile of concatenated strings.
 
-For each reachable node, the assembly should include:
+For each reachable node, the generated page source should include:
 
 - the node title when one exists
-- the node source path
-- the parent/child relationship at a readable level
-- a compact property summary
 - the authored body content for that node
-- each projection attached to that node
+- each projection attached to that node as visible placeholder content
 
 Projection placeholders should be ordinary Typst content. They should be intentionally obvious, but not pretend to be final output.
 
-A suppressed projection should still be visible in the rendered artifact as a suppressed placeholder, so review can confirm that suppression state was parsed and attached to the projection rather than stored as a node property.
+A suppressed projection should still be visible in the rendered artifact as a suppressed placeholder, so review can confirm that suppression state was parsed and attached to the projection rather than stored as a node property. Inherited projections that have no authored call site yet, such as inherited navigation, should still render as page-level placeholders so the output approximates the future routed page.
 
-The renderer may normalize or re-emit Typst syntax when serializing the assembly, but it should not drop non-publisher authored content from reachable nodes. Publisher calls whose final output depends on unimplemented query/projection semantics should be represented by structural placeholders that preserve the parsed projection detail.
+The renderer may normalize or re-emit Typst syntax when serializing render sources, but it should not drop non-publisher authored content from reachable nodes. Publisher calls whose final output depends on unimplemented query/projection semantics should be represented by structural placeholders that preserve the parsed projection detail.
 
 ## Export semantics
 
-The renderer may write an intermediate Typst assembly file under `build/api-sketch/`.
+The renderer may write intermediate Typst render sources under `build/api-sketch/typst/`.
 
 Final export should be delegated to Typst libraries for both formats:
 
 - PDF export uses standard paged Typst compilation plus `typst-pdf`, with the `typst-pdf` version aligned to the existing Typst crate version.
-- HTML export uses Typst's experimental HTML document path plus the matching HTML exporter crate, compiling each reachable node's source body to a separate HTML file.
+- HTML export uses Typst's experimental HTML document path plus the matching HTML exporter crate, compiling each generated reachable-node `.typ` source to a separate HTML file.
 
 The implementation must not invoke `typst` as a subprocess. A later CLI milestone can decide how production rendering is configured and exposed to users.
 
@@ -237,26 +234,26 @@ The exact names may vary if the implementation has a clearer local fit, but keep
 `render_publication` should:
 
 1. Validate or require a validation-clean publication before export.
-2. Build a reviewable Typst assembly document structurally from the typed publication model and reachable source content.
-3. Write `api-sketch.typ` under the output directory.
-4. Compile that assembly to a paged Typst document in-process.
+2. Build generated per-node Typst render sources structurally from the typed publication model and reachable source content.
+3. Write per-node `.typ` files under the output directory and write `api-sketch.typ` as a single combined PDF source that includes those page sources.
+4. Compile `api-sketch.typ` to a paged Typst document in-process.
 5. Export PDF in-process through `typst-pdf`.
-6. Compile each reachable node source to HTML in-process through the matching Typst HTML path, writing deterministic route-like output paths.
+6. Compile each generated reachable-node `.typ` file to HTML in-process through the matching Typst HTML path, writing deterministic route-like output paths.
 7. Return the paths written.
 
-Errors should report which stage failed: assembly write, paged compilation, PDF export, HTML compilation/export, or output write.
+Errors should report which stage failed: generated Typst source write, paged compilation, PDF export, HTML compilation/export, or output write.
 
-## Generated assembly content
+## Generated render source content
 
-The assembly should be intentionally simple Typst. It should prioritize reviewability over final site design.
+The generated page sources should be intentionally simple Typst. They should prioritize approximating the eventual routed pages over final site design.
 
-The assembly file is useful even if the implementation works with Typst syntax/AST nodes internally:
+The generated `.typ` files are useful even if the implementation works with Typst syntax/AST nodes internally:
 
-- it gives reviewers a stable intermediate artifact to inspect when PDF or HTML output is wrong;
-- it keeps PDF and HTML export on the same Typst input instead of creating two separate render paths;
+- they give reviewers stable intermediate artifacts to inspect when PDF or HTML output is wrong;
+- they keep PDF and HTML export on shared page sources instead of separate render semantics;
 - it makes this milestone a rendering proof from the parsed publication model, not a commitment to final routed-page generation.
 
-Direct Typst syntax/AST manipulation is preferred where it is the clearer implementation path, especially for preserving authored body content. A small typed assembly IR is also acceptable if the Typst syntax API is not ergonomic enough. The milestone contract is structural assembly first, serialized `.typ` artifact second, and final PDF/HTML export delegated to the Typst crate stack.
+Direct Typst syntax/AST manipulation is preferred where it is the clearer implementation path, especially for preserving authored body content. A small typed render IR is also acceptable if the Typst syntax API is not ergonomic enough. The milestone contract is structural render source first, serialized `.typ` artifacts second, and final PDF/HTML export delegated to the Typst crate stack.
 
 Minimum visible structure:
 
@@ -277,9 +274,8 @@ Projection placeholder:
 The exact formatting can differ, but the generated PDF and HTML must visibly answer:
 
 - Which nodes rendered?
-- What is each node's title/source path?
-- What children does each node declare?
-- Which projections are attached to each node?
+- What rendered authored content belongs to each node?
+- Which projections are visible on each node, including inherited navigation?
 - Which projection placeholders are suppressed?
 - What query/rendering details came from inspect-level model data?
 
@@ -290,8 +286,8 @@ The renderer should include authored content from the source `.typ` files for th
 Keep the work atomic. A good split is:
 
 1. PRD/docs only.
-2. Add `typst-pdf` and any matching HTML exporter dependency, plus a minimal render module that builds the structural assembly document, serializes `api-sketch.typ`, and tests both the structure and the serialized review artifact.
-3. Add in-process PDF/HTML export and tests around artifact creation.
+2. Add `typst-pdf` and any matching HTML exporter dependency, plus a minimal render module that writes generated per-node Typst render sources and tests their structure.
+3. Add in-process PDF/HTML export and tests around artifact creation from those generated `.typ` files.
 4. Extend `examples/api_sketch.rs` to call the renderer and print artifact paths.
 
 Do not combine CLI work, query-engine work, routed-page output, or fixture redesign into these commits.
@@ -309,6 +305,8 @@ It should write:
 ```text
 build/api-sketch/api-sketch.typ
 build/api-sketch/api-sketch.pdf
+build/api-sketch/typst/index.typ
+build/api-sketch/typst/writing.typ
 build/api-sketch/index.html
 build/api-sketch/writing.html
 build/api-sketch/writing/blog-1.html

@@ -119,18 +119,21 @@ pub fn render_publication(
         .output_dir
         .join(format!("{}.pdf", options.artifact_name));
 
-    let assembly = render_assembly(publication);
+    let render_sources = write_render_sources(publication, options)?;
+    let assembly = render_pdf_source(&render_sources);
     fs::write(&typst_path, &assembly).map_err(|source| RenderError::AssemblyWrite {
         path: typst_path.clone(),
         source,
     })?;
 
     let world = AssemblyWorld::new(
+        &options.output_dir,
+        &options.source_root,
         typst_path
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or("assembly.typ"),
-        assembly,
+            .strip_prefix(&options.output_dir)
+            .ok()
+            .and_then(|path| path.to_str())
+            .unwrap_or("api-sketch.typ"),
     );
 
     let paged = typst::compile::<PagedDocument>(&world)
@@ -158,7 +161,7 @@ pub fn render_publication(
         })?;
     }
 
-    let html_paths = render_html_pages(publication, options)?;
+    let html_paths = render_html_pages(&render_sources, options)?;
 
     Ok(RenderedArtifacts {
         typst_path,
@@ -168,22 +171,24 @@ pub fn render_publication(
 }
 
 fn render_html_pages(
-    publication: &Publication,
+    render_sources: &[RenderSource],
     options: &RenderOptions,
 ) -> Result<Vec<PathBuf>, RenderError> {
     let mut html_paths = Vec::new();
 
-    for node in &publication.nodes {
-        let html_path = html_path_for_source(&options.output_dir, &node.source_path);
-        if let Some(parent) = html_path.parent() {
+    for render_source in render_sources {
+        if let Some(parent) = render_source.html_path.parent() {
             fs::create_dir_all(parent).map_err(|source| RenderError::CreateOutputDir {
                 path: parent.to_path_buf(),
                 source,
             })?;
         }
 
-        let source = renderable_node_source(publication, node);
-        let world = PageWorld::new(&options.source_root, &node.source_path, source);
+        let world = AssemblyWorld::new(
+            &options.output_dir,
+            &options.source_root,
+            &render_source.virtual_path,
+        );
         let html_document = typst::compile::<typst_html::HtmlDocument>(&world)
             .output
             .map_err(|diagnostics| RenderError::HtmlCompilation {
@@ -193,11 +198,11 @@ fn render_html_pages(
             typst_html::html(&html_document).map_err(|diagnostics| RenderError::HtmlExport {
                 diagnostics: format_diagnostics(diagnostics.iter()),
             })?;
-        fs::write(&html_path, html).map_err(|source| RenderError::HtmlWrite {
-            path: html_path.clone(),
+        fs::write(&render_source.html_path, html).map_err(|source| RenderError::HtmlWrite {
+            path: render_source.html_path.clone(),
             source,
         })?;
-        html_paths.push(html_path);
+        html_paths.push(render_source.html_path.clone());
     }
 
     Ok(html_paths)
@@ -207,87 +212,81 @@ fn html_path_for_source(output_dir: &Path, source_path: &str) -> PathBuf {
     output_dir.join(Path::new(source_path).with_extension("html"))
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct RenderSource {
+    virtual_path: String,
+    html_path: PathBuf,
+}
+
+fn write_render_sources(
+    publication: &Publication,
+    options: &RenderOptions,
+) -> Result<Vec<RenderSource>, RenderError> {
+    let typst_dir = options.output_dir.join("typst");
+    fs::create_dir_all(&typst_dir).map_err(|source| RenderError::CreateOutputDir {
+        path: typst_dir.clone(),
+        source,
+    })?;
+
+    let mut render_sources = Vec::new();
+    for node in &publication.nodes {
+        let virtual_path = generated_typst_path(&node.source_path);
+        let typst_path = options.output_dir.join(&virtual_path);
+        if let Some(parent) = typst_path.parent() {
+            fs::create_dir_all(parent).map_err(|source| RenderError::CreateOutputDir {
+                path: parent.to_path_buf(),
+                source,
+            })?;
+        }
+
+        let source = renderable_node_source(publication, node);
+        fs::write(&typst_path, source).map_err(|source| RenderError::AssemblyWrite {
+            path: typst_path,
+            source,
+        })?;
+
+        render_sources.push(RenderSource {
+            virtual_path,
+            html_path: html_path_for_source(&options.output_dir, &node.source_path),
+        });
+    }
+
+    Ok(render_sources)
+}
+
+fn generated_typst_path(source_path: &str) -> String {
+    format!("typst/{source_path}")
+}
+
+fn render_pdf_source(render_sources: &[RenderSource]) -> String {
+    let mut source = String::new();
+    for (index, render_source) in render_sources.iter().enumerate() {
+        if index > 0 {
+            writeln!(source, "#pagebreak()").unwrap();
+            writeln!(source).unwrap();
+        }
+        writeln!(source, "#include \"{}\"", render_source.virtual_path).unwrap();
+    }
+    source
+}
+
 struct AssemblyWorld {
     main: FileId,
-    source: String,
+    root_dir: PathBuf,
+    fallback_root_dir: PathBuf,
     library: LazyHash<Library>,
     book: LazyHash<FontBook>,
     fonts: Vec<Font>,
 }
 
 impl AssemblyWorld {
-    fn new(source_path: &str, source: String) -> Self {
+    fn new(root_dir: &Path, fallback_root_dir: &Path, source_path: &str) -> Self {
         let fonts = FontSearcher::new().include_system_fonts(false).search();
 
         Self {
             main: FileId::new(None, VirtualPath::new(source_path)),
-            source,
-            library: LazyHash::new(
-                Library::builder()
-                    .with_features(Features::from_iter([Feature::Html]))
-                    .build(),
-            ),
-            book: LazyHash::new(fonts.book),
-            fonts: fonts.fonts.iter().filter_map(|slot| slot.get()).collect(),
-        }
-    }
-}
-
-impl World for AssemblyWorld {
-    fn library(&self) -> &LazyHash<Library> {
-        &self.library
-    }
-
-    fn book(&self) -> &LazyHash<FontBook> {
-        &self.book
-    }
-
-    fn main(&self) -> FileId {
-        self.main
-    }
-
-    fn source(&self, id: FileId) -> FileResult<Source> {
-        if id == self.main {
-            Ok(Source::new(id, self.source.clone()))
-        } else {
-            Err(FileError::NotFound(
-                id.vpath().as_rootless_path().to_path_buf(),
-            ))
-        }
-    }
-
-    fn file(&self, id: FileId) -> FileResult<Bytes> {
-        Err(FileError::NotFound(
-            id.vpath().as_rootless_path().to_path_buf(),
-        ))
-    }
-
-    fn font(&self, index: usize) -> Option<Font> {
-        self.fonts.get(index).cloned()
-    }
-
-    fn today(&self, _offset: Option<i64>) -> Option<Datetime> {
-        Datetime::from_ymd(2026, 5, 24)
-    }
-}
-
-struct PageWorld {
-    root_dir: PathBuf,
-    main: FileId,
-    source: String,
-    library: LazyHash<Library>,
-    book: LazyHash<FontBook>,
-    fonts: Vec<Font>,
-}
-
-impl PageWorld {
-    fn new(root_dir: &Path, source_path: &str, source: String) -> Self {
-        let fonts = FontSearcher::new().include_system_fonts(false).search();
-
-        Self {
             root_dir: root_dir.to_path_buf(),
-            main: FileId::new(None, VirtualPath::new(source_path)),
-            source,
+            fallback_root_dir: fallback_root_dir.to_path_buf(),
             library: LazyHash::new(
                 Library::builder()
                     .with_features(Features::from_iter([Feature::Html]))
@@ -305,13 +304,22 @@ impl PageWorld {
             )));
         }
 
-        id.vpath()
-            .resolve(&self.root_dir)
-            .ok_or(FileError::AccessDenied)
+        let relative = id.vpath().as_rootless_path().to_path_buf();
+        let generated = self.root_dir.join(&relative);
+        if generated.exists() {
+            return Ok(generated);
+        }
+
+        let fallback = self.fallback_root_dir.join(&relative);
+        if fallback.exists() {
+            return Ok(fallback);
+        }
+
+        Ok(generated)
     }
 }
 
-impl World for PageWorld {
+impl World for AssemblyWorld {
     fn library(&self) -> &LazyHash<Library> {
         &self.library
     }
@@ -325,10 +333,6 @@ impl World for PageWorld {
     }
 
     fn source(&self, id: FileId) -> FileResult<Source> {
-        if id == self.main {
-            return Ok(Source::new(id, self.source.clone()));
-        }
-
         let path = self.resolve(id)?;
         if path.extension().is_some_and(|extension| extension != "typ") {
             return Err(FileError::NotSource);
@@ -339,11 +343,11 @@ impl World for PageWorld {
     }
 
     fn file(&self, id: FileId) -> FileResult<Bytes> {
-        let path = self.resolve(id)?;
-        if is_image_path(&path) {
+        if is_image_id(id) {
             return Ok(Bytes::new(PLACEHOLDER_PNG.to_vec()));
         }
 
+        let path = self.resolve(id)?;
         let bytes = fs::read(&path).map_err(|source| file_error(source, &path))?;
         Ok(Bytes::new(bytes))
     }
@@ -370,6 +374,10 @@ fn is_image_path(path: &Path) -> bool {
                 "gif" | "jpg" | "jpeg" | "png" | "svg" | "webp"
             )
         })
+}
+
+fn is_image_id(id: FileId) -> bool {
+    is_image_path(id.vpath().as_rootless_path())
 }
 
 const PLACEHOLDER_PNG: &[u8] = &[
@@ -569,7 +577,12 @@ pub fn render_assembly(publication: &Publication) -> String {
 
 fn renderable_node_source(publication: &Publication, node: &Node) -> String {
     let mut placeholders = ProjectionPlaceholders::new(publication, node);
-    let source = replace_publisher_projection_calls(&node.authored_source.typst, &mut placeholders);
+    let mut source =
+        replace_publisher_projection_calls(&node.authored_source.typst, &mut placeholders);
+    let inherited_navigation = placeholders.remaining_navigation_placeholders();
+    if !inherited_navigation.is_empty() {
+        source = format!("{inherited_navigation}\n\n{source}");
+    }
     sanitize_reference_shorthand(&source)
 }
 
@@ -577,6 +590,7 @@ struct ProjectionPlaceholders {
     outlines: VecDeque<AssemblyProjection>,
     bibliographies: VecDeque<AssemblyProjection>,
     references: VecDeque<AssemblyProjection>,
+    navigation: VecDeque<AssemblyProjection>,
     suppressed_navigation: VecDeque<AssemblyProjection>,
 }
 
@@ -591,6 +605,7 @@ impl ProjectionPlaceholders {
             outlines: VecDeque::new(),
             bibliographies: VecDeque::new(),
             references: VecDeque::new(),
+            navigation: VecDeque::new(),
             suppressed_navigation: VecDeque::new(),
         };
 
@@ -608,6 +623,7 @@ impl ProjectionPlaceholders {
                 {
                     placeholders.suppressed_navigation.push_back(placeholder);
                 }
+                ProjectionKind::Navigation => placeholders.navigation.push_back(placeholder),
                 _ => {}
             }
         }
@@ -626,6 +642,19 @@ impl ProjectionPlaceholders {
         projection
             .map(|projection| projection.to_typst_placeholder())
             .unwrap_or_else(|| unmatched_projection_placeholder(call))
+    }
+
+    fn remaining_navigation_placeholders(&mut self) -> String {
+        let mut source = String::new();
+        while let Some(projection) = self.navigation.pop_front() {
+            writeln!(source, "{}", projection.to_typst_placeholder()).unwrap();
+            writeln!(source).unwrap();
+        }
+        while let Some(projection) = self.suppressed_navigation.pop_front() {
+            writeln!(source, "{}", projection.to_typst_placeholder()).unwrap();
+            writeln!(source).unwrap();
+        }
+        source.trim_end().to_string()
     }
 }
 

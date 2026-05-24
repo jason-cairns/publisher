@@ -112,6 +112,17 @@ fn render_publication_writes_one_html_page_per_reachable_node() {
     assert!(artifacts.typst_path.is_file());
     assert!(artifacts.pdf_path.is_file());
     assert!(!output_dir.join("api-sketch.html").exists());
+    assert!(output_dir.join("typst/index.typ").is_file());
+    assert!(output_dir.join("typst/writing.typ").is_file());
+    assert!(output_dir.join("typst/writing/blog-1.typ").is_file());
+
+    let pdf_source = fs::read_to_string(output_dir.join("api-sketch.typ")).unwrap();
+    assert!(pdf_source.contains("#include \"typst/index.typ\""));
+    assert!(pdf_source.contains("#include \"typst/writing.typ\""));
+    assert!(pdf_source.contains("#include \"typst/writing/blog-1.typ\""));
+    assert!(pdf_source.contains("#pagebreak()"));
+    assert!(!pdf_source.contains("Node id:"));
+    assert!(!pdf_source.contains("Authored source:"));
 
     let index = fs::read_to_string(output_dir.join("index.html")).unwrap();
     assert!(index.contains("Hello, welcome to my publication!"));
@@ -123,11 +134,19 @@ fn render_publication_writes_one_html_page_per_reachable_node() {
 
     let blog_1 = fs::read_to_string(output_dir.join("writing/blog-1.html")).unwrap();
     assert!(blog_1.contains("This is my blog. I can have images"));
+    assert!(blog_1.contains("kind: navigation"));
     assert!(blog_1.contains("kind: bibliography"));
     assert!(blog_1.contains("@cite placeholder"));
 
+    let writing = fs::read_to_string(output_dir.join("writing.html")).unwrap();
+    assert!(writing.contains("Writing"));
+    assert!(writing.contains("kind: navigation"));
+    assert!(writing.contains("scope=\"nav:index\""));
+    assert!(writing.contains("kind: outline"));
+
     let blog_2 = fs::read_to_string(output_dir.join("writing/blog-2.html")).unwrap();
     assert!(blog_2.contains("I can reference"));
+    assert!(blog_2.contains("kind: navigation"));
     assert!(blog_2.contains("kind: reference"));
 
     let cv = fs::read_to_string(output_dir.join("cv.html")).unwrap();
