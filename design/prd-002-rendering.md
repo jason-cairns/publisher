@@ -30,7 +30,7 @@ Add a small rendering path that takes the parsed `examples/api_sketch_site/index
 - `build/api-sketch/api-sketch.pdf`
 - `build/api-sketch/api-sketch.html`
 
-The renderer should render from typed publication data. It should not require the production CLI yet, should not call the Typst CLI, and should not implement the real query engine.
+The renderer should render from typed publication data and the authored Typst source content for reachable nodes. It should not require the production CLI yet, should not call the Typst CLI, and should not implement the real query engine.
 
 ## Current implementation context
 
@@ -68,7 +68,7 @@ Do not use `v1/` as implementation context. It is old implementation history and
 
 ## Current model summary
 
-The parsed publication model already exists. The renderer should consume it rather than re-parse source files.
+The parsed publication model already exists. The renderer should consume it for publication structure, validation, and projection metadata. If the current model does not yet retain enough source syntax or content to preserve authored node bodies, extend the parser/model narrowly to carry that render input rather than deriving publication semantics a second time inside the renderer.
 
 Important entity shapes:
 
@@ -163,7 +163,7 @@ It does not need to render each publication node as its final routed page.
 
 It does not need to evaluate arbitrary queries, resolve references, filter bibliographies, build final navigation, or produce final tables of contents.
 
-It does not need to preserve every body paragraph from the original Typst files. The renderer may use title/source-path properties and projection placeholders as the visible proof of rendering.
+It does not need final production layout or final projection output, but it should preserve authored content from the reachable source `.typ` files. Projection output may remain placeholder content in this milestone.
 
 It does not need a styling system, template registry, plugin system, or routing layer.
 
@@ -171,17 +171,20 @@ It does not need a styling system, template registry, plugin system, or routing 
 
 The renderer should treat the parsed `Publication` as the source of truth.
 
-For each reachable node, the assembly should show:
+For each reachable node, the assembly should include:
 
 - the node title when one exists
 - the node source path
 - the parent/child relationship at a readable level
 - a compact property summary
+- the authored body content for that node
 - each projection attached to that node
 
 Projection placeholders should be ordinary Typst content. They should be intentionally obvious, but not pretend to be final output.
 
 A suppressed projection should still be visible in the rendered artifact as a suppressed placeholder, so review can confirm that suppression state was parsed and attached to the projection rather than stored as a node property.
+
+The renderer may normalize or re-emit Typst syntax when building the assembly, but it should not drop non-publisher authored content from reachable nodes. Publisher calls whose final output depends on unimplemented query/projection semantics should be represented by placeholders that preserve the parsed projection detail.
 
 ## Export semantics
 
@@ -225,7 +228,7 @@ The exact names may vary if the implementation has a clearer local fit, but keep
 `render_publication` should:
 
 1. Validate or require a validation-clean publication before export.
-2. Generate a Typst assembly string from the typed publication model.
+2. Generate a reviewable Typst assembly document from the typed publication model and reachable source content.
 3. Write `api-sketch.typ` under the output directory.
 4. Compile that assembly to a paged Typst document in-process.
 5. Export PDF in-process through `typst-pdf`.
@@ -237,6 +240,14 @@ Errors should report which stage failed: assembly write, paged compilation, PDF 
 ## Generated assembly content
 
 The assembly should be intentionally simple Typst. It should prioritize reviewability over final site design.
+
+The assembly file is useful even if the implementation works with Typst syntax/AST nodes internally:
+
+- it gives reviewers a stable intermediate artifact to inspect when PDF or HTML output is wrong;
+- it keeps PDF and HTML export on the same Typst input instead of creating two separate render paths;
+- it makes this milestone a rendering proof from the parsed publication model, not a commitment to final routed-page generation.
+
+Direct Typst syntax/AST manipulation is acceptable where it is the clearer implementation path, especially for preserving authored body content. The milestone contract is not "string building at all costs"; it is that the renderer produces a persisted, reviewable Typst assembly and delegates final PDF/HTML export to the Typst crate stack.
 
 Minimum visible structure:
 
@@ -263,7 +274,7 @@ The exact formatting can differ, but the generated PDF and HTML must visibly ans
 - Which projection placeholders are suppressed?
 - What query/rendering details came from inspect-level model data?
 
-The renderer may omit original freeform body content from the source `.typ` files for this milestone. It should not silently omit parsed projection placeholders.
+The renderer should include authored content from the source `.typ` files for this milestone. Where final projection semantics are not implemented, it should render placeholders in place of, or alongside, the corresponding projection output. It should not silently omit parsed projection placeholders.
 
 ## Suggested implementation slices
 
@@ -292,7 +303,7 @@ build/api-sketch/api-sketch.pdf
 build/api-sketch/api-sketch.html
 ```
 
-The generated PDF and HTML should visibly include the API sketch publication root, child nodes, and projection placeholders.
+The generated PDF and HTML should visibly include the API sketch publication root, child nodes, authored content, and projection placeholders.
 
 The test suite should include focused evidence for the renderer and continue to validate the existing parser/model/inspect behavior.
 

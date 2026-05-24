@@ -2,6 +2,7 @@
 
 == Rendering milestone
 - PRD-002 keeps rendering example-scoped: generate a reviewable Typst assembly from the parsed publication, then delegate PDF and HTML export to Typst libraries. Correct approach for this milestone is `typst-pdf` and the matching HTML exporter crate from Rust, not invoking the Typst CLI, query-engine evaluation, or final routed pages.
+- PRD-002 review follow-up: the assembly artifact is a reviewable intermediate, not a requirement to hand-build Typst with strings. Correct approach is to preserve authored source content for reachable nodes, use Typst syntax/AST machinery where it helps, replace unimplemented projection output with explicit placeholders, and still persist the generated assembly so PDF and HTML exports share the same input.
 
 == Core entities inspect
 - Attempted `cargo test --test inspect_api_sketch` before any accepted `insta` snapshot existed. It compiled and produced `tests/snapshots/inspect_api_sketch__inspect_api_sketch_snapshot_is_stable.snap.new`, then failed because the snapshot was unreviewed. Correct approach: accept the generated snapshot with `INSTA_UPDATE=always cargo test --test inspect_api_sketch`, then rerun the focused test normally.
