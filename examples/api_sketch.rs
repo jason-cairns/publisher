@@ -1,6 +1,8 @@
 use std::process::ExitCode;
 
-use publisher::{InspectOptions, inspect_publication, parse_publication};
+use publisher::{
+    InspectOptions, RenderOptions, inspect_publication, parse_publication, render_publication,
+};
 
 fn main() -> ExitCode {
     let debug_defaults = std::env::args()
@@ -22,9 +24,25 @@ fn main() -> ExitCode {
 
     print!("{}", inspect_publication(&publication, &report, &options));
 
-    if report.is_ok() {
-        ExitCode::SUCCESS
-    } else {
-        ExitCode::FAILURE
+    if !report.is_ok() {
+        return ExitCode::FAILURE;
+    }
+
+    let render_options = RenderOptions {
+        output_dir: "build/api-sketch".into(),
+        artifact_name: "api-sketch".to_string(),
+    };
+
+    match render_publication(&publication, &render_options) {
+        Ok(artifacts) => {
+            println!("wrote {}", artifacts.typst_path.display());
+            println!("wrote {}", artifacts.pdf_path.display());
+            println!("wrote {}", artifacts.html_path.display());
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!("failed to render {root}: {error}");
+            ExitCode::FAILURE
+        }
     }
 }

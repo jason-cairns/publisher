@@ -64,3 +64,17 @@ fn render_assembly_includes_projection_placeholder_detail_without_query_evaluati
     assert!(assembly.contains("query-selection: resolved-target explicit"));
     assert!(assembly.contains("query-filter: target == <figure-1> explicit"));
 }
+
+#[test]
+fn render_publication_rejects_validation_errors_before_export() {
+    let mut publication = parse_publication("examples/api_sketch_site/index.typ").unwrap();
+    publication.queries.clear();
+
+    let options = RenderOptions {
+        output_dir: std::env::temp_dir().join("publisher-render-invalid"),
+        artifact_name: "invalid".to_string(),
+    };
+
+    let error = render_publication(&publication, &options).unwrap_err();
+    assert!(matches!(error, RenderError::ValidationFailed { .. }));
+}

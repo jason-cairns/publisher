@@ -1,6 +1,252 @@
-use std::fmt::Write;
+use std::fmt::{self, Display, Write};
+use std::fs;
+use std::io;
+use std::path::PathBuf;
 
 use crate::model::*;
+use crate::validation::ValidationError;
+
+use typst::diag::{FileError, FileResult, SourceDiagnostic};
+use typst::foundations::{Bytes, Datetime};
+use typst::layout::PagedDocument;
+use typst::syntax::{FileId, Source, VirtualPath};
+use typst::text::{Font, FontBook};
+use typst::utils::LazyHash;
+use typst::{Feature, Features, Library, LibraryExt, World};
+use typst_kit::fonts::FontSearcher;
+use typst_pdf::PdfOptions;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RenderOptions {
+    pub output_dir: PathBuf,
+    pub artifact_name: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RenderedArtifacts {
+    pub typst_path: PathBuf,
+    pub pdf_path: PathBuf,
+    pub html_path: PathBuf,
+}
+
+#[derive(Debug)]
+pub enum RenderError {
+    ValidationFailed { errors: Vec<ValidationError> },
+    CreateOutputDir { path: PathBuf, source: io::Error },
+    AssemblyWrite { path: PathBuf, source: io::Error },
+    PagedCompilation { diagnostics: Vec<String> },
+    PdfExport { diagnostics: Vec<String> },
+    PdfWrite { path: PathBuf, source: io::Error },
+    HtmlCompilation { diagnostics: Vec<String> },
+    HtmlExport { diagnostics: Vec<String> },
+    HtmlWrite { path: PathBuf, source: io::Error },
+}
+
+impl Display for RenderError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            RenderError::ValidationFailed { errors } => {
+                write!(f, "publication failed validation before render: {errors:?}")
+            }
+            RenderError::CreateOutputDir { path, source } => {
+                write!(
+                    f,
+                    "failed to create render output directory {}: {source}",
+                    path.display()
+                )
+            }
+            RenderError::AssemblyWrite { path, source } => {
+                write!(
+                    f,
+                    "failed to write Typst assembly {}: {source}",
+                    path.display()
+                )
+            }
+            RenderError::PagedCompilation { diagnostics } => {
+                write!(
+                    f,
+                    "failed to compile paged Typst assembly: {}",
+                    diagnostics.join("; ")
+                )
+            }
+            RenderError::PdfExport { diagnostics } => {
+                write!(f, "failed to export PDF: {}", diagnostics.join("; "))
+            }
+            RenderError::PdfWrite { path, source } => {
+                write!(f, "failed to write PDF {}: {source}", path.display())
+            }
+            RenderError::HtmlCompilation { diagnostics } => {
+                write!(
+                    f,
+                    "failed to compile HTML Typst assembly: {}",
+                    diagnostics.join("; ")
+                )
+            }
+            RenderError::HtmlExport { diagnostics } => {
+                write!(f, "failed to export HTML: {}", diagnostics.join("; "))
+            }
+            RenderError::HtmlWrite { path, source } => {
+                write!(f, "failed to write HTML {}: {source}", path.display())
+            }
+        }
+    }
+}
+
+impl std::error::Error for RenderError {}
+
+pub fn render_publication(
+    publication: &Publication,
+    options: &RenderOptions,
+) -> Result<RenderedArtifacts, RenderError> {
+    let report = publication.validate();
+    if !report.is_ok() {
+        return Err(RenderError::ValidationFailed {
+            errors: report.errors,
+        });
+    }
+
+    fs::create_dir_all(&options.output_dir).map_err(|source| RenderError::CreateOutputDir {
+        path: options.output_dir.clone(),
+        source,
+    })?;
+
+    let typst_path = options
+        .output_dir
+        .join(format!("{}.typ", options.artifact_name));
+    let pdf_path = options
+        .output_dir
+        .join(format!("{}.pdf", options.artifact_name));
+    let html_path = options
+        .output_dir
+        .join(format!("{}.html", options.artifact_name));
+
+    let assembly = render_assembly(publication);
+    fs::write(&typst_path, &assembly).map_err(|source| RenderError::AssemblyWrite {
+        path: typst_path.clone(),
+        source,
+    })?;
+
+    let world = AssemblyWorld::new(
+        typst_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("assembly.typ"),
+        assembly,
+    );
+
+    let paged = typst::compile::<PagedDocument>(&world)
+        .output
+        .map_err(|diagnostics| RenderError::PagedCompilation {
+            diagnostics: format_diagnostics(diagnostics.iter()),
+        })?;
+    let pdf = typst_pdf::pdf(&paged, &PdfOptions::default()).map_err(|diagnostics| {
+        RenderError::PdfExport {
+            diagnostics: format_diagnostics(diagnostics.iter()),
+        }
+    })?;
+    fs::write(&pdf_path, pdf).map_err(|source| RenderError::PdfWrite {
+        path: pdf_path.clone(),
+        source,
+    })?;
+
+    let html_document = typst::compile::<typst_html::HtmlDocument>(&world)
+        .output
+        .map_err(|diagnostics| RenderError::HtmlCompilation {
+            diagnostics: format_diagnostics(diagnostics.iter()),
+        })?;
+    let html = typst_html::html(&html_document).map_err(|diagnostics| RenderError::HtmlExport {
+        diagnostics: format_diagnostics(diagnostics.iter()),
+    })?;
+    fs::write(&html_path, html).map_err(|source| RenderError::HtmlWrite {
+        path: html_path.clone(),
+        source,
+    })?;
+
+    Ok(RenderedArtifacts {
+        typst_path,
+        pdf_path,
+        html_path,
+    })
+}
+
+struct AssemblyWorld {
+    main: FileId,
+    source: String,
+    library: LazyHash<Library>,
+    book: LazyHash<FontBook>,
+    fonts: Vec<Font>,
+}
+
+impl AssemblyWorld {
+    fn new(source_path: &str, source: String) -> Self {
+        let fonts = FontSearcher::new().include_system_fonts(false).search();
+
+        Self {
+            main: FileId::new(None, VirtualPath::new(source_path)),
+            source,
+            library: LazyHash::new(
+                Library::builder()
+                    .with_features(Features::from_iter([Feature::Html]))
+                    .build(),
+            ),
+            book: LazyHash::new(fonts.book),
+            fonts: fonts.fonts.iter().filter_map(|slot| slot.get()).collect(),
+        }
+    }
+}
+
+impl World for AssemblyWorld {
+    fn library(&self) -> &LazyHash<Library> {
+        &self.library
+    }
+
+    fn book(&self) -> &LazyHash<FontBook> {
+        &self.book
+    }
+
+    fn main(&self) -> FileId {
+        self.main
+    }
+
+    fn source(&self, id: FileId) -> FileResult<Source> {
+        if id == self.main {
+            Ok(Source::new(id, self.source.clone()))
+        } else {
+            Err(FileError::NotFound(
+                id.vpath().as_rootless_path().to_path_buf(),
+            ))
+        }
+    }
+
+    fn file(&self, id: FileId) -> FileResult<Bytes> {
+        Err(FileError::NotFound(
+            id.vpath().as_rootless_path().to_path_buf(),
+        ))
+    }
+
+    fn font(&self, index: usize) -> Option<Font> {
+        self.fonts.get(index).cloned()
+    }
+
+    fn today(&self, _offset: Option<i64>) -> Option<Datetime> {
+        Datetime::from_ymd(2026, 5, 24)
+    }
+}
+
+fn format_diagnostics<'a>(
+    diagnostics: impl IntoIterator<Item = &'a SourceDiagnostic>,
+) -> Vec<String> {
+    diagnostics
+        .into_iter()
+        .map(|diagnostic| {
+            let mut message = diagnostic.message.to_string();
+            for hint in &diagnostic.hints {
+                write!(message, " hint: {hint}").unwrap();
+            }
+            message
+        })
+        .collect()
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AssemblyDocument {
