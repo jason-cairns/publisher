@@ -1,3 +1,3 @@
-#import publisher
+#import "/publisher.typ"
 
 #publisher.bibliography("thesis/bibliography.bib")

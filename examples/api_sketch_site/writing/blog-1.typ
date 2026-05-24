@@ -1,10 +1,10 @@
-#import publisher
+#import "/publisher.typ"
 
 == Blog 1
 
 This is my blog. I can have images,
 #figure(
-  image("assets/img-1.jpg", width: 80%),
+  image("../assets/img-1.png", width: 80%),
   caption: [An image of an image.],
 )
 #link("https://example.com")[links], and all other regular typst things.

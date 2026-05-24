@@ -30,7 +30,7 @@ Note how the directory structure is not relevant, but each source file represent
 == index.typ
 
 ```typ
-#import publisher
+#import "/publisher.typ"
 
 = My Publication
 
@@ -50,7 +50,7 @@ Here are the contents:
 == writing.typ
 
 ```typ
-#import publisher
+#import "/publisher.typ"
 
 = Writing // implicitly creates a title property with value "Writing"
 
@@ -67,13 +67,13 @@ Here are the contents:
 == writing/blog-1.typ
 
 ```typ
-#import publisher
+#import "/publisher.typ"
 
 == Blog 1
 
 This is my blog. I can have images,
 #figure(
-  image("img-1.jpg", width: 80%),
+  image("../assets/img-1.png", width: 80%),
   caption: [An image of an image.],
 )
 #link("https://example.com")[links], and all other regular typst things.
@@ -86,7 +86,7 @@ current page, it won't include citations from other nodes.
 == writing/blog-2.typ
 
 ```typ
-#import publisher
+#import "/publisher.typ"
 
 == Blog 2
 
@@ -100,7 +100,7 @@ it is found under.
 == thesis/intro.typ
 
 ```typ
-#import publisher
+#import "/publisher.typ"
 
 = Thesis
 
@@ -120,7 +120,7 @@ it is found under.
 == thesis/ch-1.typ
 
 ```typ
-#import publisher
+#import "/publisher.typ"
 
 @bib-ref
 ```

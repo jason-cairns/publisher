@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+typst = "0.14.2"
+typst-kit = { version = "0.14.2", default-features = false, features = [
+    "embed-fonts",
+] }
 typst-syntax = "0.14.2"
 
 [dev-dependencies]

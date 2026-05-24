@@ -10,7 +10,9 @@ use typst_syntax::{SyntaxKind, SyntaxNode};
 use crate::model::*;
 
 mod calls;
+mod markers;
 mod projections;
+mod world;
 
 #[derive(Debug)]
 pub enum ParseError {
@@ -23,6 +25,10 @@ pub enum ParseError {
     UnsupportedGlob {
         source_path: String,
         pattern: String,
+    },
+    Typst {
+        source_path: String,
+        diagnostics: Vec<String>,
     },
 }
 
@@ -41,6 +47,14 @@ impl fmt::Display for ParseError {
                 f,
                 "{source_path}: unsupported publisher.children glob pattern {pattern:?}"
             ),
+            Self::Typst {
+                source_path,
+                diagnostics,
+            } => write!(
+                f,
+                "{source_path}: Typst marker evaluation failed: {}",
+                diagnostics.join("; ")
+            ),
         }
     }
 }
@@ -57,6 +71,7 @@ struct PublicationParser {
     parsed_files: BTreeMap<String, ParsedFile>,
     reachable_order: Vec<String>,
     parents: BTreeMap<String, String>,
+    support_files: BTreeSet<String>,
 }
 
 impl PublicationParser {
@@ -79,6 +94,7 @@ impl PublicationParser {
             parsed_files: BTreeMap::new(),
             reachable_order: Vec::new(),
             parents: BTreeMap::new(),
+            support_files: BTreeSet::new(),
         })
     }
 
@@ -171,7 +187,7 @@ impl PublicationParser {
         Ok(())
     }
 
-    fn parse_file(&self, source_path: &str) -> Result<ParsedFile, ParseError> {
+    fn parse_file(&mut self, source_path: &str) -> Result<ParsedFile, ParseError> {
         let full_path = self.root_dir.join(source_path);
         let text = fs::read_to_string(&full_path).map_err(|source| ParseError::Io {
             path: full_path.clone(),
@@ -181,6 +197,11 @@ impl PublicationParser {
 
         let mut parsed = ParsedFile::new(source_path);
         self.extract_from_node(&syntax, &mut parsed)?;
+        let evaluation = markers::evaluate_markers(self, source_path)?;
+        self.support_files.extend(evaluation.support_files);
+        for marker in evaluation.markers {
+            calls::record_marker(self, &mut parsed, marker)?;
+        }
         Ok(parsed)
     }
 
@@ -208,11 +229,6 @@ impl PublicationParser {
             SyntaxKind::Ref => {
                 if let Some(reference) = node.cast::<ast::Ref>() {
                     parsed.record_citation(reference.target());
-                }
-            }
-            SyntaxKind::FuncCall => {
-                if let Some(call) = node.cast::<ast::FuncCall>() {
-                    calls::record_call(self, parsed, call)?;
                 }
             }
             _ => {}
@@ -321,7 +337,11 @@ impl PublicationParser {
 
             if file_type.is_dir() {
                 self.collect_typ_files(&format!("{rel_path}/"), &entry.path(), files)?;
-            } else if file_type.is_file() && rel_path.ends_with(".typ") {
+            } else if file_type.is_file()
+                && rel_path.ends_with(".typ")
+                && !self.support_files.contains(&rel_path)
+                && !is_publisher_library_file(&rel_path)
+            {
                 files.insert(rel_path);
             }
         }
@@ -497,4 +517,8 @@ pub(super) fn scope_kind(kind: &str) -> ScopeKind {
 
 pub(super) fn normalize_source_path(path: &str) -> String {
     path.replace('\\', "/")
+}
+
+fn is_publisher_library_file(path: &str) -> bool {
+    matches!(path, "publisher.typ" | "publisher-nav.typ")
 }
