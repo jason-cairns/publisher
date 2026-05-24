@@ -3,8 +3,8 @@
 == Core entities
 - A publication is a tree of Typst source-file nodes.
 - A node is one Typst source file.
-- The root node is implicit and always exists.
-- The root node defines the global scope implicitly.
+- The publication root node is explicit: it is the root Typst source file given to the publisher.
+- The explicit root node defines the global scope implicitly.
 - A node may declare additional scopes.
 - A scope is a contextual region over source-file nodes.
 - A scope has a name, kind, attributes, root node, and extent.
