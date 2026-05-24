@@ -195,7 +195,7 @@ impl PublicationParser {
         })?;
         let syntax = typst_syntax::parse(&text);
 
-        let mut parsed = ParsedFile::new(source_path);
+        let mut parsed = ParsedFile::new(source_path, text);
         self.extract_from_node(&syntax, &mut parsed)?;
         let evaluation = markers::evaluate_markers(self, source_path)?;
         self.support_files.extend(evaluation.support_files);
@@ -207,6 +207,7 @@ impl PublicationParser {
 
     fn node_from_file(&self, parsed: &ParsedFile) -> Node {
         let mut node = Node::new(parsed.node_id.clone(), parsed.source_path.clone())
+            .with_authored_source(parsed.authored_source.clone())
             .with_children(parsed.child_paths.iter().map(|child| node_id(child)));
         node.parent = self
             .parents
@@ -354,6 +355,7 @@ impl PublicationParser {
 struct ParsedFile {
     source_path: String,
     node_id: NodeId,
+    authored_source: String,
     child_paths: Vec<String>,
     title: Option<Title>,
     scopes: Vec<Scope>,
@@ -368,10 +370,11 @@ struct ParsedFile {
 }
 
 impl ParsedFile {
-    fn new(source_path: &str) -> Self {
+    fn new(source_path: &str, authored_source: String) -> Self {
         Self {
             source_path: source_path.to_string(),
             node_id: node_id(source_path),
+            authored_source,
             child_paths: Vec::new(),
             title: None,
             scopes: Vec::new(),

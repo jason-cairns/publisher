@@ -388,6 +388,7 @@ impl Publication {
 pub struct Node {
     pub id: NodeId,
     pub source_path: String,
+    pub authored_source: AuthoredSource,
     pub parent: Option<NodeId>,
     pub children: Vec<NodeId>,
     pub properties: Vec<PropertyId>,
@@ -400,6 +401,7 @@ impl Node {
         Self {
             id: id.into(),
             source_path: source_path.into(),
+            authored_source: AuthoredSource::default(),
             parent: None,
             children: Vec::new(),
             properties: Vec::new(),
@@ -416,6 +418,24 @@ impl Node {
     pub fn with_children(mut self, children: impl IntoIterator<Item = NodeId>) -> Self {
         self.children = children.into_iter().collect();
         self
+    }
+
+    pub fn with_authored_source(mut self, source: impl Into<String>) -> Self {
+        self.authored_source = AuthoredSource::new(source);
+        self
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct AuthoredSource {
+    pub typst: String,
+}
+
+impl AuthoredSource {
+    pub fn new(source: impl Into<String>) -> Self {
+        Self {
+            typst: source.into(),
+        }
     }
 }
 
