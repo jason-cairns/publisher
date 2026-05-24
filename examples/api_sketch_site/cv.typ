@@ -1,4 +1,4 @@
-#import publisher
+#import "/publisher.typ"
 
 #publisher.nav.suppress()
 

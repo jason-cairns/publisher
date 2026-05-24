@@ -308,13 +308,21 @@ fn has_attr(projection: &Projection, key: &str, value: Value) -> bool {
 }
 
 #[test]
-fn reachable_unsupported_publisher_calls_are_preserved_as_warnings() {
-    let fixture = TestFixture::new("unsupported-publisher-call");
+fn malformed_publisher_markers_are_preserved_as_warnings() {
+    let fixture = TestFixture::new("malformed-publisher-marker");
     fixture.write(
         "index.typ",
-        "#import publisher\n= Root\n#publisher.future()\n",
+        r#"#import "/publisher.typ"
+= Root
+#metadata((kind: "child")) <publisher-marker>
+"#,
     );
-    fixture.write("unused.typ", "#import publisher\n= Unused\n");
+    fixture.write(
+        "unused.typ",
+        r#"#import "/publisher.typ"
+= Unused
+"#,
+    );
 
     let publication = parse_publication(fixture.path("index.typ")).unwrap();
     let report = publication.validate();
@@ -326,7 +334,7 @@ fn reachable_unsupported_publisher_calls_are_preserved_as_warnings() {
             ParseWarning {
                 source_path: Some("index.typ".to_string()),
                 kind: ParseWarningKind::UnsupportedPublisherCall,
-                message: "unsupported publisher call preserved for review: publisher.future"
+                message: "unsupported publisher marker preserved for review: missing required field \"path\""
                     .to_string(),
             },
             ParseWarning::unreachable_typ_file("unused.typ"),
@@ -337,7 +345,14 @@ fn reachable_unsupported_publisher_calls_are_preserved_as_warnings() {
 #[test]
 fn bare_nav_suppress_is_ignored_for_this_milestone() {
     let fixture = TestFixture::new("bare-nav-suppress");
-    fixture.write("index.typ", "#import publisher\n= Root\n#nav.suppress()\n");
+    fixture.write("nav.typ", "#let suppress() = []\n");
+    fixture.write(
+        "index.typ",
+        r#"#import "nav.typ"
+= Root
+#nav.suppress()
+"#,
+    );
 
     let publication = parse_publication(fixture.path("index.typ")).unwrap();
     let report = publication.validate();
@@ -363,7 +378,10 @@ fn named_scope_preserves_stable_id_and_authored_metadata() {
     let fixture = TestFixture::new("named-scope");
     fixture.write(
         "index.typ",
-        "#import publisher\n= Root\n#publisher.scope(kind: \"outline\", name: \"essays\")\n",
+        r#"#import "/publisher.typ"
+= Root
+#publisher.scope(kind: "outline", name: "essays")
+"#,
     );
 
     let publication = parse_publication(fixture.path("index.typ")).unwrap();
@@ -375,17 +393,57 @@ fn named_scope_preserves_stable_id_and_authored_metadata() {
 }
 
 #[test]
+fn publisher_aliases_and_wrappers_emit_parser_markers() {
+    let fixture = TestFixture::new("publisher-alias-wrapper");
+    fixture.write(
+        "index.typ",
+        r#"#import "/publisher.typ"
+= Root
+#let p = publisher
+#let add-child(path) = p.child(path)
+#add-child("section.typ")
+#p.scope(kind: "nav")
+"#,
+    );
+    fixture.write(
+        "section.typ",
+        r#"#import "/publisher.typ"
+= Section
+"#,
+    );
+
+    let publication = parse_publication(fixture.path("index.typ")).unwrap();
+
+    assert_children(&publication, "index", &["section"]);
+    assert_scope(&publication, "nav:index", ScopeKind::Nav, "index");
+    assert_nav_scopes(&publication, "section", &["nav:index"]);
+}
+
+#[test]
 fn stacked_nav_scopes_create_stacked_navigation_projections() {
     let fixture = TestFixture::new("stacked-nav");
     fixture.write(
         "index.typ",
-        "#import publisher\n= Root\n#publisher.child(\"section.typ\")\n#publisher.scope(kind: \"nav\")\n",
+        r#"#import "/publisher.typ"
+= Root
+#publisher.child("section.typ")
+#publisher.scope(kind: "nav")
+"#,
     );
     fixture.write(
         "section.typ",
-        "#import publisher\n= Section\n#publisher.child(\"leaf.typ\")\n#publisher.scope(kind: \"nav\")\n",
+        r#"#import "/publisher.typ"
+= Section
+#publisher.child("leaf.typ")
+#publisher.scope(kind: "nav")
+"#,
     );
-    fixture.write("leaf.typ", "#import publisher\n= Leaf\n");
+    fixture.write(
+        "leaf.typ",
+        r#"#import "/publisher.typ"
+= Leaf
+"#,
+    );
 
     let publication = parse_publication(fixture.path("index.typ")).unwrap();
 
@@ -397,13 +455,27 @@ fn publisher_nav_suppress_suppresses_all_nav_projections_on_page_only() {
     let fixture = TestFixture::new("nav-suppress-page-only");
     fixture.write(
         "index.typ",
-        "#import publisher\n= Root\n#publisher.child(\"section.typ\")\n#publisher.scope(kind: \"nav\")\n",
+        r#"#import "/publisher.typ"
+= Root
+#publisher.child("section.typ")
+#publisher.scope(kind: "nav")
+"#,
     );
     fixture.write(
         "section.typ",
-        "#import publisher\n= Section\n#publisher.child(\"leaf.typ\")\n#publisher.scope(kind: \"nav\")\n#publisher.nav.suppress()\n",
+        r#"#import "/publisher.typ"
+= Section
+#publisher.child("leaf.typ")
+#publisher.scope(kind: "nav")
+#publisher.nav.suppress()
+"#,
     );
-    fixture.write("leaf.typ", "#import publisher\n= Leaf\n");
+    fixture.write(
+        "leaf.typ",
+        r#"#import "/publisher.typ"
+= Leaf
+"#,
+    );
 
     let publication = parse_publication(fixture.path("index.typ")).unwrap();
 
@@ -449,7 +521,16 @@ impl TestFixture {
             .as_nanos();
         let root = std::env::temp_dir().join(format!("publisher-{name}-{unique}"));
         fs::create_dir_all(&root).unwrap();
-        Self { root }
+        let fixture = Self { root };
+        fixture.write(
+            "publisher.typ",
+            include_str!("../examples/api_sketch_site/publisher.typ"),
+        );
+        fixture.write(
+            "publisher-nav.typ",
+            include_str!("../examples/api_sketch_site/publisher-nav.typ"),
+        );
+        fixture
     }
 
     fn path(&self, rel_path: &str) -> PathBuf {
