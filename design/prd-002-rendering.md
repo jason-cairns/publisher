@@ -171,6 +171,16 @@ It does not need a styling system, template registry, plugin system, or routing 
 
 The renderer should treat the parsed `Publication` as the source of truth.
 
+The renderer must be strictly structural. Do not implement this milestone by stitching Typst strings together. That approach is too brittle for authored Typst content because it forces the renderer to reason about escaping, markup/code mode boundaries, comments, labels, references, nested publisher calls, and imports as raw text.
+
+Use one of these structural approaches instead:
+
+- operate on Typst syntax/AST nodes and source spans where the Typst crate stack supports it;
+- introduce a narrow typed render IR, such as `AssemblyDocument`, if direct Typst syntax rewriting is awkward;
+- serialize to `.typ` only at the boundary after the structured representation has been built.
+
+The persisted `api-sketch.typ` remains useful as a review and debugging artifact, but it is not the renderer's internal programming model. Treat the `.typ` file as serialized output from a structural assembly, not as a pile of concatenated strings.
+
 For each reachable node, the assembly should include:
 
 - the node title when one exists
@@ -184,7 +194,7 @@ Projection placeholders should be ordinary Typst content. They should be intenti
 
 A suppressed projection should still be visible in the rendered artifact as a suppressed placeholder, so review can confirm that suppression state was parsed and attached to the projection rather than stored as a node property.
 
-The renderer may normalize or re-emit Typst syntax when building the assembly, but it should not drop non-publisher authored content from reachable nodes. Publisher calls whose final output depends on unimplemented query/projection semantics should be represented by placeholders that preserve the parsed projection detail.
+The renderer may normalize or re-emit Typst syntax when serializing the assembly, but it should not drop non-publisher authored content from reachable nodes. Publisher calls whose final output depends on unimplemented query/projection semantics should be represented by structural placeholders that preserve the parsed projection detail.
 
 ## Export semantics
 
@@ -228,7 +238,7 @@ The exact names may vary if the implementation has a clearer local fit, but keep
 `render_publication` should:
 
 1. Validate or require a validation-clean publication before export.
-2. Generate a reviewable Typst assembly document from the typed publication model and reachable source content.
+2. Build a reviewable Typst assembly document structurally from the typed publication model and reachable source content.
 3. Write `api-sketch.typ` under the output directory.
 4. Compile that assembly to a paged Typst document in-process.
 5. Export PDF in-process through `typst-pdf`.
@@ -247,7 +257,7 @@ The assembly file is useful even if the implementation works with Typst syntax/A
 - it keeps PDF and HTML export on the same Typst input instead of creating two separate render paths;
 - it makes this milestone a rendering proof from the parsed publication model, not a commitment to final routed-page generation.
 
-Direct Typst syntax/AST manipulation is acceptable where it is the clearer implementation path, especially for preserving authored body content. The milestone contract is not "string building at all costs"; it is that the renderer produces a persisted, reviewable Typst assembly and delegates final PDF/HTML export to the Typst crate stack.
+Direct Typst syntax/AST manipulation is preferred where it is the clearer implementation path, especially for preserving authored body content. A small typed assembly IR is also acceptable if the Typst syntax API is not ergonomic enough. The milestone contract is structural assembly first, serialized `.typ` artifact second, and final PDF/HTML export delegated to the Typst crate stack.
 
 Minimum visible structure:
 
@@ -281,7 +291,7 @@ The renderer should include authored content from the source `.typ` files for th
 Keep the work atomic. A good split is:
 
 1. PRD/docs only.
-2. Add `typst-pdf` and any matching HTML exporter dependency, plus a minimal render module that only generates the Typst assembly string and tests it.
+2. Add `typst-pdf` and any matching HTML exporter dependency, plus a minimal render module that builds the structural assembly document, serializes `api-sketch.typ`, and tests both the structure and the serialized review artifact.
 3. Add in-process PDF/HTML export and tests around artifact creation.
 4. Extend `examples/api_sketch.rs` to call the renderer and print artifact paths.
 
