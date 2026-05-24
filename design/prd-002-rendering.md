@@ -28,9 +28,9 @@ The next milestone should prove that the parsed model can drive a visible editio
 Add a small rendering path that takes the parsed `examples/api_sketch_site/index.typ` publication and writes both:
 
 - `build/api-sketch/api-sketch.pdf`
-- `build/api-sketch/api-sketch.html`
+- one HTML file per reachable source node under `build/api-sketch/`, such as `index.html`, `writing.html`, `writing/blog-1.html`, and `thesis/intro.html`
 
-The renderer should render from typed publication data and the authored Typst source content for reachable nodes. It should not require the production CLI yet, should not call the Typst CLI, and should not implement the real query engine.
+The renderer should render from typed publication data and the authored Typst source content for reachable nodes. The PDF may remain a single combined proof artifact, but HTML should approximate future routed site pages: each output file corresponds to one source node and contains rendered Typst body content from that node. It should not require the production CLI yet, should not call the Typst CLI, and should not implement the real query engine.
 
 ## Current implementation context
 
@@ -159,11 +159,9 @@ By the end of this milestone:
 
 This milestone does not need the production CLI.
 
-It does not need to render each publication node as its final routed page.
-
 It does not need to evaluate arbitrary queries, resolve references, filter bibliographies, build final navigation, or produce final tables of contents.
 
-It does not need final production layout or final projection output, but it should preserve authored content from the reachable source `.typ` files. Projection output may remain placeholder content in this milestone.
+It does not need final production layout or final projection output, but it should preserve authored content from the reachable source `.typ` files. Projection output may remain placeholder content in this milestone. Projection calls should remain in their authored positions where practical, rendering as explicit placeholders until final query/projection semantics exist.
 
 It does not need a styling system, template registry, plugin system, or routing layer.
 
@@ -203,7 +201,7 @@ The renderer may write an intermediate Typst assembly file under `build/api-sket
 Final export should be delegated to Typst libraries for both formats:
 
 - PDF export uses standard paged Typst compilation plus `typst-pdf`, with the `typst-pdf` version aligned to the existing Typst crate version.
-- HTML export uses Typst's experimental HTML document path plus the matching HTML exporter crate.
+- HTML export uses Typst's experimental HTML document path plus the matching HTML exporter crate, compiling each reachable node's source body to a separate HTML file.
 
 The implementation must not invoke `typst` as a subprocess. A later CLI milestone can decide how production rendering is configured and exposed to users.
 
@@ -217,6 +215,7 @@ Suggested shape:
 
 ```rust
 pub struct RenderOptions {
+    pub source_root: PathBuf,
     pub output_dir: PathBuf,
     pub artifact_name: String,
 }
@@ -224,7 +223,7 @@ pub struct RenderOptions {
 pub struct RenderedArtifacts {
     pub typst_path: PathBuf,
     pub pdf_path: PathBuf,
-    pub html_path: PathBuf,
+    pub html_paths: Vec<PathBuf>,
 }
 
 pub fn render_publication(
@@ -242,7 +241,7 @@ The exact names may vary if the implementation has a clearer local fit, but keep
 3. Write `api-sketch.typ` under the output directory.
 4. Compile that assembly to a paged Typst document in-process.
 5. Export PDF in-process through `typst-pdf`.
-6. Compile or export HTML in-process through the matching Typst HTML path.
+6. Compile each reachable node source to HTML in-process through the matching Typst HTML path, writing deterministic route-like output paths.
 7. Return the paths written.
 
 Errors should report which stage failed: assembly write, paged compilation, PDF export, HTML compilation/export, or output write.
@@ -310,10 +309,17 @@ It should write:
 ```text
 build/api-sketch/api-sketch.typ
 build/api-sketch/api-sketch.pdf
-build/api-sketch/api-sketch.html
+build/api-sketch/index.html
+build/api-sketch/writing.html
+build/api-sketch/writing/blog-1.html
+build/api-sketch/writing/blog-2.html
+build/api-sketch/thesis/intro.html
+build/api-sketch/thesis/bib.html
+build/api-sketch/thesis/ch-1.html
+build/api-sketch/cv.html
 ```
 
-The generated PDF and HTML should visibly include the API sketch publication root, child nodes, authored content, and projection placeholders.
+The generated PDF should remain a useful combined proof artifact. The generated HTML pages should visibly include each node's rendered authored content and in-place projection placeholders; they should not be a single inspect-style source/model metadata dump.
 
 The test suite should include focused evidence for the renderer and continue to validate the existing parser/model/inspect behavior.
 
@@ -324,7 +330,9 @@ cargo test
 cargo run --example api_sketch
 test -s build/api-sketch/api-sketch.typ
 test -s build/api-sketch/api-sketch.pdf
-test -s build/api-sketch/api-sketch.html
+test -s build/api-sketch/index.html
+test -s build/api-sketch/writing/blog-1.html
+test -s build/api-sketch/thesis/intro.html
 ```
 
 The example should print the artifact paths it wrote so a reviewer can open them manually.

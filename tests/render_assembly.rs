@@ -1,4 +1,7 @@
 use publisher::*;
+use std::fs;
+use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[test]
 fn render_assembly_preserves_api_sketch_nodes_and_authored_source() {
@@ -71,10 +74,71 @@ fn render_publication_rejects_validation_errors_before_export() {
     publication.queries.clear();
 
     let options = RenderOptions {
+        source_root: "examples/api_sketch_site".into(),
         output_dir: std::env::temp_dir().join("publisher-render-invalid"),
         artifact_name: "invalid".to_string(),
     };
 
     let error = render_publication(&publication, &options).unwrap_err();
     assert!(matches!(error, RenderError::ValidationFailed { .. }));
+}
+
+#[test]
+fn render_publication_writes_one_html_page_per_reachable_node() {
+    let publication = parse_publication("examples/api_sketch_site/index.typ").unwrap();
+    let output_dir = temp_render_dir("publisher-render-pages");
+    fs::create_dir_all(&output_dir).unwrap();
+    fs::write(output_dir.join("api-sketch.html"), "stale combined html").unwrap();
+
+    let options = RenderOptions {
+        source_root: "examples/api_sketch_site".into(),
+        output_dir: output_dir.clone(),
+        artifact_name: "api-sketch".to_string(),
+    };
+
+    let artifacts = render_publication(&publication, &options).unwrap();
+    let expected_html_paths = vec![
+        output_dir.join("index.html"),
+        output_dir.join("writing.html"),
+        output_dir.join("writing/blog-1.html"),
+        output_dir.join("writing/blog-2.html"),
+        output_dir.join("thesis/intro.html"),
+        output_dir.join("thesis/bib.html"),
+        output_dir.join("thesis/ch-1.html"),
+        output_dir.join("cv.html"),
+    ];
+
+    assert_eq!(artifacts.html_paths, expected_html_paths);
+    assert!(artifacts.typst_path.is_file());
+    assert!(artifacts.pdf_path.is_file());
+    assert!(!output_dir.join("api-sketch.html").exists());
+
+    let index = fs::read_to_string(output_dir.join("index.html")).unwrap();
+    assert!(index.contains("Hello, welcome to my publication!"));
+    assert!(index.contains("projection-placeholder"));
+    assert!(index.contains("kind: outline"));
+    assert!(index.contains("kind: navigation"));
+    assert!(!index.contains("Node id:"));
+    assert!(!index.contains("Authored source:"));
+
+    let blog_1 = fs::read_to_string(output_dir.join("writing/blog-1.html")).unwrap();
+    assert!(blog_1.contains("This is my blog. I can have images"));
+    assert!(blog_1.contains("kind: bibliography"));
+    assert!(blog_1.contains("@cite placeholder"));
+
+    let blog_2 = fs::read_to_string(output_dir.join("writing/blog-2.html")).unwrap();
+    assert!(blog_2.contains("I can reference"));
+    assert!(blog_2.contains("kind: reference"));
+
+    let cv = fs::read_to_string(output_dir.join("cv.html")).unwrap();
+    assert!(cv.contains("about me"));
+    assert!(cv.contains("kind: navigation"));
+}
+
+fn temp_render_dir(prefix: &str) -> PathBuf {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    std::env::temp_dir().join(format!("{prefix}-{unique}"))
 }

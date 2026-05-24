@@ -29,6 +29,7 @@ fn main() -> ExitCode {
     }
 
     let render_options = RenderOptions {
+        source_root: "examples/api_sketch_site".into(),
         output_dir: "build/api-sketch".into(),
         artifact_name: "api-sketch".to_string(),
     };
@@ -37,7 +38,9 @@ fn main() -> ExitCode {
         Ok(artifacts) => {
             println!("wrote {}", artifacts.typst_path.display());
             println!("wrote {}", artifacts.pdf_path.display());
-            println!("wrote {}", artifacts.html_path.display());
+            for html_path in artifacts.html_paths {
+                println!("wrote {}", html_path.display());
+            }
             ExitCode::SUCCESS
         }
         Err(error) => {
