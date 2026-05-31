@@ -112,9 +112,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for result in &source_results {
         match result {
             Ok(path) => writeln!(report, "- ok: {}", path.display())?,
-            Err(CompileFailure { source, diagnostics }) => {
-                writeln!(report, "- failed: {source}: {}", diagnostics.join("; "))?
-            }
+            Err(CompileFailure {
+                source,
+                diagnostics,
+            }) => writeln!(report, "- failed: {source}: {}", diagnostics.join("; "))?,
         }
     }
     writeln!(report)?;
@@ -122,9 +123,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for (name, result) in &assembly_results {
         match result {
             Ok(path) => writeln!(report, "- ok: {name}: {}", path.display())?,
-            Err(CompileFailure { source, diagnostics }) => {
-                writeln!(report, "- failed: {name}: {source}: {}", diagnostics.join("; "))?
-            }
+            Err(CompileFailure {
+                source,
+                diagnostics,
+            }) => writeln!(
+                report,
+                "- failed: {name}: {source}: {}",
+                diagnostics.join("; ")
+            )?,
         }
     }
     writeln!(report)?;
@@ -170,8 +176,14 @@ struct ScopeMarker {
 
 #[derive(Clone, Debug)]
 enum Marker {
-    Publish { path: String },
-    Scope { id: String, title: Option<String>, tags: Vec<String> },
+    Publish {
+        path: String,
+    },
+    Scope {
+        id: String,
+        title: Option<String>,
+        tags: Vec<String>,
+    },
     Other,
 }
 
@@ -540,7 +552,8 @@ impl World for DiscoveryWorld {
             return Err(FileError::NotSource);
         }
 
-        let mut text = fs::read_to_string(&path).map_err(|error| FileError::from_io(error, &path))?;
+        let mut text =
+            fs::read_to_string(&path).map_err(|error| FileError::from_io(error, &path))?;
         if matches!(self.mode, RenderMode::SanitizeReferences) && id == self.main {
             text = sanitize_references(&text);
         }
