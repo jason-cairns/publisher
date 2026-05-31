@@ -3,6 +3,24 @@
 This document is intended as an orchestrator handoff.
 It breaks PRD-003 into independently reviewable slices after the selector/scope discovery report.
 
+== Required reading
+
+An implementation orchestrator should read these first:
+
+- `design/prd-003-typst-selector-usage.typ`: target authoring model and clarified rendered-region semantics.
+- `design/prd-003-discovery-report.typ`: discovery evidence and implementation recommendation.
+- `examples/prd003_discovery_site/`: main PRD-003 scope/publish fixture.
+- `examples/prd003_counter_ref_site/`: focused cross-source counter and reference fixture.
+- `docs/implementation-notes.typ`: failed approaches and corrected implementation conclusions.
+
+== Discovery status
+
+The discovery phase is complete enough to start implementation.
+Do not create new discovery-only slices for outline scope locality, bibliography multiplicity, cross-source HTML references, or cross-source counters unless implementation evidence contradicts the recorded conclusions.
+
+Remaining work should be implementation work with focused verification.
+If an implementation attempt fails, record the failure and corrected approach in `docs/implementation-notes.typ`.
+
 == Implementation stance
 
 Preserve the target authoring model:
@@ -52,23 +70,24 @@ Outlines:
 - Typst does not infer publisher scope boundaries from `#scope(...)` metadata.
 - The publisher must provide scope locality before compilation by using a scoped entrypoint or generated bounded selectors.
 
-== Slice 1: PRD-003 fixture and docs alignment
+Cross-source counters:
+
+- Combined scope/edition entrypoints naturally continue Typst counters across source files.
+- Per-source HTML compilations reset counters unless the publisher seeds counter state.
+- For numbered multi-source scopes, the publisher should compute and inject counter seed/state into generated per-source HTML input.
+- Hidden-including prior sources to advance counters is not acceptable.
+
+== Preflight: verify discovery artifacts
 
 Goal:
-Keep the fixture and design docs aligned with the accepted target shape.
-
-Inputs:
-
-- `design/prd-003-typst-selector-usage.typ`
-- `design/prd-003-discovery-report.typ`
-- `examples/prd003_discovery_site/`
+Confirm the handoff artifacts still compile and the discovery evidence remains reproducible.
+This is not a discovery slice and should not expand scope.
 
 Tasks:
 
-- Ensure fixture uses only `#scope(...)` and `#publish(...)` for publisher semantics.
-- Ensure ordinary Typst calls remain ordinary in fixture sources.
-- Keep `#include` in the fixture as literal inclusion evidence.
-- Make docs explicitly define render target, rendered region, and Typst entrypoint.
+- Compile the PRD and report.
+- Run the main discovery harness.
+- Run the counter/reference fixture commands when counter or reference behavior is being touched.
 
 Acceptance:
 
@@ -76,9 +95,23 @@ Acceptance:
 typst compile design/prd-003-typst-selector-usage.typ /private/tmp/prd-003-typst-selector-usage.pdf
 typst compile design/prd-003-discovery-report.typ /private/tmp/prd-003-discovery-report.pdf
 cargo run --example prd003_discovery
+typst compile --features html --format html examples/prd003_counter_ref_site/thesis-combined.typ /private/tmp/thesis-combined.html
+typst compile --features html --format html examples/prd003_counter_ref_site/thesis/ch-02.typ /private/tmp/ch-02-unseeded.html
+typst compile --features html --format html examples/prd003_counter_ref_site/thesis-ch-02-seeded.typ /private/tmp/ch-02-seeded.html
+typst compile --features html --format html examples/prd003_counter_ref_site/combined-ref.typ /private/tmp/combined-ref.html
+typst compile --features html --format html examples/prd003_counter_ref_site/blog-adapted-ref.typ /private/tmp/blog-adapted-ref.html
 ```
 
-== Slice 2: Add PRD-003 marker API
+Expected known failure:
+
+```sh
+typst compile examples/prd003_counter_ref_site/blog-standalone.typ /private/tmp/blog-standalone.pdf
+```
+
+This should fail with a missing `<ch-02>` label.
+That failure is the evidence that per-source HTML cross-source references need an adapter.
+
+== Slice 1: Add PRD-003 marker API
 
 Goal:
 Parse the new authoring API without preserving the old user-facing API as the implementation target.
@@ -109,7 +142,7 @@ cargo run --example prd003_discovery
 
 Inspect or test evidence must show decoded `publish` edges and scope metadata from the PRD-003 fixture.
 
-== Slice 3: Source-document graph and route model
+== Slice 2: Source-document graph and route model
 
 Goal:
 Build the PRD-003 source-document graph from `#publish(...)` only.
@@ -143,7 +176,7 @@ Evidence must show:
 - literal included files are not routed source documents;
 - route paths for every reachable source.
 
-== Slice 4: Scope extent and inheritance model
+== Slice 3: Scope extent and inheritance model
 
 Goal:
 Make the intended scope semantics concrete and inspectable.
@@ -178,7 +211,7 @@ Tests must cover:
 - duplicate title warning;
 - implicit source scope boundaries.
 
-== Slice 5: PRD-003 inspect output
+== Slice 4: PRD-003 inspect output
 
 Goal:
 Give authors and implementation agents enough diagnostics to trust scope behavior before rendering.
@@ -207,7 +240,7 @@ cargo test --test inspect_api_sketch
 
 Add a PRD-003-specific inspect snapshot or equivalent focused assertion.
 
-== Slice 6: Scope-local outline lowering
+== Slice 5: Scope-local outline lowering
 
 Goal:
 Make ordinary authored `#outline(...)` behave scope-locally without `publisher.outline(...)`.
@@ -234,7 +267,7 @@ cargo run --example prd003_discovery
 
 Evidence must show a normal authored outline rendering only headings from the active scope.
 
-== Slice 7: Bibliography diagnostics and scoped bibliography generation
+== Slice 6: Bibliography diagnostics and scoped bibliography generation
 
 Goal:
 Implement the accepted one-bibliography-per-scope rule.
@@ -265,7 +298,7 @@ Evidence must show:
 - one bibliography in a source scope succeeds;
 - one bibliography in a named scope succeeds.
 
-== Slice 8: Cross-source HTML reference adapter
+== Slice 7: Cross-source HTML reference adapter
 
 Goal:
 Make standard authored references work in one-HTML-per-source output.
@@ -294,7 +327,7 @@ cargo run --example prd003_discovery
 
 Evidence must show a blog page can link to a thesis label in per-source HTML without hidden target inclusion and without polluting local outline or bibliography inputs.
 
-== Slice 9: Cross-source counters and heading numbering
+== Slice 8: Cross-source counters and heading numbering
 
 Goal:
 Make counters behave correctly across published source documents for render targets that span multiple sources.
@@ -346,7 +379,7 @@ Evidence must show:
 - source-local scopes can still reset numbering when intended;
 - hidden inclusion is not used to seed counters.
 
-== Slice 10: Named scope and union render entrypoints
+== Slice 9: Named scope and union render entrypoints
 
 Goal:
 Render selected scopes and explicit scope unions as generated Typst entrypoints.
@@ -380,7 +413,7 @@ Evidence must show:
 - `writing + thesis` union entrypoint;
 - per-source HTML route outputs.
 
-== Slice 11: PRD cleanup and migration
+== Slice 10: PRD cleanup and migration
 
 Goal:
 Remove stale language after PRD-003 behavior is proven.
