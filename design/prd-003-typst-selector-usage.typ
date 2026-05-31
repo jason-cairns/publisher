@@ -43,6 +43,13 @@ Discovery should make scope extent inspectable and diagnosable.
 Authors should be able to see exactly which source documents a scope covers, why a document is included or excluded, and where same-kind shadowing changes the active scope.
 Scope names should default from the declaring source document's first suitable heading, with an explicit name available as an override.
 
+`#scope(...)` should not render visible content by default.
+It marks a publication region and provides context for Typst-native selection and rendering behavior.
+Navigation, outlines, bibliographies, queries, counters, labels, and references should remain ordinary Typst behavior wherever possible.
+
+Any navigation helper introduced later should be explicitly a rendering helper, not a scope declaration or a hidden query system.
+For example, a future `#publisher.nav(target: heading.where(level: 1))` would be a convenience renderer inside a scope, while `#scope(kind: "nav")` would only mark the region.
+
 == Source document semantics
 
 `Node` should stop being core domain language for this milestone.
