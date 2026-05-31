@@ -99,6 +99,7 @@ fn write_node_details(out: &mut String, publication: &Publication, options: &Ins
             parsed_from(&node.source_path, options.source_root.as_deref())
         )
         .unwrap();
+        writeln!(out, "  html-route: {}", node.html_route).unwrap();
         write_node_children(out, publication, node);
         write_node_properties(out, publication, node);
         write_node_scopes(out, publication, node);

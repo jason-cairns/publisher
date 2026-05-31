@@ -25,6 +25,7 @@ Tree
 Node index.typ
   id: index parent=<root>
   parsed-from: examples/api_sketch_site/index.typ
+  html-route: index.html
   children:
     writing.typ
     thesis/intro.typ
@@ -56,6 +57,7 @@ Node index.typ
 Node writing.typ
   id: writing parent=index.typ
   parsed-from: examples/api_sketch_site/writing.typ
+  html-route: writing.html
   children:
     writing/blog-1.typ
     writing/blog-2.typ
@@ -89,6 +91,7 @@ Node writing.typ
 Node writing/blog-1.typ
   id: writing/blog-1 parent=writing.typ
   parsed-from: examples/api_sketch_site/writing/blog-1.typ
+  html-route: writing/blog-1.html
   children:
     <none>
   properties:
@@ -122,6 +125,7 @@ Node writing/blog-1.typ
 Node writing/blog-2.typ
   id: writing/blog-2 parent=writing.typ
   parsed-from: examples/api_sketch_site/writing/blog-2.typ
+  html-route: writing/blog-2.html
   children:
     <none>
   properties:
@@ -153,6 +157,7 @@ Node writing/blog-2.typ
 Node thesis/intro.typ
   id: thesis/intro parent=index.typ
   parsed-from: examples/api_sketch_site/thesis/intro.typ
+  html-route: thesis/intro.html
   children:
     thesis/bib.typ
     thesis/ch-1.typ
@@ -203,6 +208,7 @@ Node thesis/intro.typ
 Node thesis/bib.typ
   id: thesis/bib parent=thesis/intro.typ
   parsed-from: examples/api_sketch_site/thesis/bib.typ
+  html-route: thesis/bib.html
   children:
     <none>
   properties:
@@ -242,6 +248,7 @@ Node thesis/bib.typ
 Node thesis/ch-1.typ
   id: thesis/ch-1 parent=thesis/intro.typ
   parsed-from: examples/api_sketch_site/thesis/ch-1.typ
+  html-route: thesis/ch-1.html
   children:
     <none>
   properties:
@@ -276,6 +283,7 @@ Node thesis/ch-1.typ
 Node cv.typ
   id: cv parent=index.typ
   parsed-from: examples/api_sketch_site/cv.typ
+  html-route: cv.html
   children:
     <none>
   properties:
