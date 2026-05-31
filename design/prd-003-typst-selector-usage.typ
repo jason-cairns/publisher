@@ -115,6 +115,13 @@ Lookup and display are separate concerns:
 Inside the same meaningful scope, references should behave like normal local Typst references.
 Scope context should be added when the origin and target cross a meaningful named scope boundary, not merely because the target belongs to a named scope.
 
+A titled scope is a display context.
+Untitled scopes are operational regions only.
+Cross-boundary references should include the nearest active titled scope for the target that is not also active at the origin.
+If no such titled scope exists, standard Typst reference display should be preserved.
+
+Do not add separate `reference-context`, `display`, or `reference-title` controls unless discovery proves that `title` alone is insufficient.
+
 == Source document semantics
 
 `Node` should stop being core domain language for this milestone.
