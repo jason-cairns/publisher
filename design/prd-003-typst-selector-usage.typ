@@ -191,6 +191,42 @@ For example, `#bibliography(...)`, `#outline(...)`, and `query(...)` should oper
 When an author wants behavior across a different region, such as a bibliography or outline across many scopes, explicit scope-id contexts should be the escape hatch.
 Discovery should investigate the smallest Typst-native way to express that context without introducing replacement publisher query/rendering APIs.
 
+=== Discovery clarification
+
+After discovery, "current rendered publication region" should be read as a publisher-selected render target, not as an implicit Typst-native boundary created by `#scope(...)` metadata inside an already-compiled document.
+
+Definitions:
+
+- A render target is what the publisher is rendering: one source document, one named scope, a union of scopes, or a whole edition.
+- A rendered region is the ordered source/content window selected by that render target after resolving `#publish(...)`, inherited scopes, and publication graph order.
+- A Typst entrypoint is the generated `.typ` source the publisher gives to Typst for that render target.
+
+The required authoring contract remains that ordinary Typst calls behave scope-locally where the publisher scope says they should.
+For example, authors should write normal Typst:
+
+```typ
+#outline(target: heading.where(level: 1))
+```
+
+and should not need to call `publisher.outline(...)`.
+
+Typst does not infer publisher scope boundaries from `#scope(...)` metadata by itself.
+The publisher must make the ordinary call scope-local before Typst compiles.
+It can do this by compiling a Typst entrypoint whose contents are already the selected scope, or by generating an explicitly bounded selector for calls that accept selectors.
+For a contiguous scope window, the generated shape may be:
+
+```typ
+#outline(
+  target: heading.where(level: 1)
+    .after(<scope-start>, inclusive: false)
+    .before(<scope-end>, inclusive: false)
+)
+```
+
+For discontiguous scopes or unions, the publisher must build the ordered union and either generate a matching entrypoint or a union of bounded selector windows.
+This is a small scope-boundary adapter.
+It is not rendered-output stitching, and it is not a user-facing replacement query/projection API.
+
 Candidate escape hatch:
 
 ```typ

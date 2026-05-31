@@ -9,6 +9,9 @@ Inside that generated entrypoint, ordinary Typst behavior is strong: `#outline(.
 PRD-003 is not feasible as a metadata-only context switch inside a larger Typst compilation.
 A non-rendering `#scope(...)` marker can be recovered through Typst metadata and labels, but Typst does not use that marker as a native boundary for ordinary `outline`, `bibliography`, `query`, or references.
 The publisher must still build the publication graph, compute scope extents, and generate the Typst input for the region being rendered.
+This does not mean authors need to call `publisher.outline(...)`.
+The user-facing contract should remain: a normal authored `#outline(...)` at a scope-local call site renders a scope-local outline.
+The implementation responsibility is on the publisher: it must lower that ordinary outline call into Typst input whose target is already scoped, either by compiling a scoped entrypoint or by supplying a bounded selector.
 
 The smallest viable architecture is therefore:
 
@@ -23,6 +26,41 @@ Typst selectors can still help inside that adapter.
 For contiguous windows, Typst source supports selector composition such as `selector(heading).after(<scope-start>).before(<scope-end>)`, and `#outline(target: ...)` can consume that bounded selector.
 That is useful for source-window and assembly-window filtering.
 It does not remove the publisher's responsibility to define scope windows, order discontiguous unions, or decide which rendered region is being compiled.
+
+== Terminology correction: rendered region
+
+The phrase "current rendered region" is too easy to misread.
+It should not mean "whatever subset of an already-compiled document happens to be inside a publisher metadata scope."
+Typst does not have that implicit publisher concept.
+
+Use this definition instead:
+
+- A render target is what the publisher has been asked to render: one source document, one named scope, a union of scopes, or a whole edition.
+- A rendered region is the ordered source/content window selected by that render target after resolving `#publish(...)`, scope inheritance, and source graph order.
+- A Typst entrypoint is the concrete generated `.typ` source the publisher gives to Typst for that render target.
+
+For whole-scope rendering, the rendered region can become the whole Typst entrypoint.
+Then ordinary `#outline(...)` is naturally scope-local because the compiled document contains only that selected region.
+
+For ordinary authored content inside a larger generated entrypoint, scope-local behavior requires an adapter at generation time.
+For outline, that adapter can preserve the authored syntax and lower:
+
+```typ
+#outline(target: heading.where(level: 1))
+```
+
+into a normal Typst outline whose target is bounded to the active publisher scope:
+
+```typ
+#outline(
+  target: heading.where(level: 1)
+    .after(<scope-start>, inclusive: false)
+    .before(<scope-end>, inclusive: false)
+)
+```
+
+The exact selector shape may differ, especially for discontiguous scopes, but the contract is the same: authors write ordinary Typst outline calls, and the publisher supplies the scope boundary before Typst compiles.
+This is not rendered-output stitching, and it is not a user-facing replacement API.
 
 == Decision table
 
@@ -177,10 +215,12 @@ The current marker pattern works: emit `metadata(...) <publisher-marker>`, compi
 This recovers declarations and source provenance.
 Scope extent over published descendants is not native Typst state; it is publisher graph state.
 
-2. Can ordinary `#outline(...)` render over the current rendered region without replacing it with `publisher.outline(...)`?
+2. Can ordinary `#outline(...)` render scope-locally without replacing it with `publisher.outline(...)`?
 
-Yes, if the current rendered region is the generated Typst document being compiled.
-No, if the expectation is a hidden metadata boundary inside a larger compiled document.
+Yes, as a required publisher contract.
+Authors should be able to write normal Typst outline calls and get scope-local behavior at scope-local call sites.
+The implementation must make that true before Typst compiles, either by compiling a scoped entrypoint or by rewriting/generating the `target:` selector so it is bounded to the active publisher scope.
+Typst will not infer that boundary from `#scope(...)` metadata by itself.
 
 3. Can ordinary `#bibliography(...)` render over the current rendered region without replacing it with `publisher.bibliography(...)`?
 
