@@ -119,6 +119,17 @@ typst query block-query.typ '<block-query-count>' --field value
 typst compile refs/blog.typ refs/blog.pdf
 ```
 
+Additional counter/reference probes backed by `examples/prd003_counter_ref_site/`:
+
+```sh
+typst compile --features html --format html examples/prd003_counter_ref_site/thesis-combined.typ /private/tmp/thesis-combined.html
+typst compile --features html --format html examples/prd003_counter_ref_site/thesis/ch-02.typ /private/tmp/ch-02-unseeded.html
+typst compile --features html --format html examples/prd003_counter_ref_site/thesis-ch-02-seeded.typ /private/tmp/ch-02-seeded.html
+typst compile --features html --format html examples/prd003_counter_ref_site/combined-ref.typ /private/tmp/combined-ref.html
+typst compile examples/prd003_counter_ref_site/blog-standalone.typ /private/tmp/blog-standalone.pdf
+typst compile --features html --format html examples/prd003_counter_ref_site/blog-adapted-ref.typ /private/tmp/blog-adapted-ref.html
+```
+
 Focused project checks:
 
 ```sh
@@ -128,6 +139,7 @@ cargo test --no-run
 == Files created or modified
 
 - `examples/prd003_discovery_site/`: throwaway PRD-003 fixture using `#scope(...)`, `#publish(...)`, ordinary `#outline(...)`, ordinary `#bibliography(...)`, standard references, and literal `#include`.
+- `examples/prd003_counter_ref_site/`: focused counter/reference fixture for cross-source numbering and per-source HTML reference adapter evidence.
 - `examples/prd003_discovery.rs`: rerunnable evidence harness that discovers graph metadata, generates region assemblies, compiles source-local HTML, compiles generated region HTML, and writes evidence text.
 - `docs/implementation-notes.typ`: failed attempts and corrected approaches observed during discovery.
 - `design/prd-003-discovery-report.typ`: this report.
@@ -206,6 +218,33 @@ block/context query probe returned headings outside the block, so block/context 
 hidden included reference targets resolved labels, but query(cite).len() and query(heading) included the hidden content.
 ```
 
+Cross-source counters and refs evidence:
+
+```text
+out/thesis-combined.html:
+<h2>1. First Chapter</h2>
+<h3>1.1. First Section</h3>
+<h2>2. Second Chapter</h2>
+<h3>2.1. Second Section</h3>
+
+out/ch-02-unseeded.html:
+<h2>1. Second Chapter</h2>
+<h3>1.1. Second Section</h3>
+
+out/ch-02-seeded.html:
+<h2>2. Second Chapter</h2>
+<h3>2.1. Second Section</h3>
+
+out/combined-ref.html:
+<p>See <a href="#ch-02">Section 2</a>.</p>
+
+blog-standalone.typ:
+error: label `<ch-02>` does not exist in the document
+
+out/blog-adapted-ref.html:
+<p>See <a href="thesis/ch-02.html">Section 2, Thesis</a>.</p>
+```
+
 == Answers to required questions
 
 1. Can a source-level `#scope(...)` marker be represented through Typst metadata, labels, or locations so the publisher can recover source-document-level scope regions?
@@ -246,6 +285,11 @@ Standard lookup works when origin and target are present in the same compilation
 Per-source HTML cannot resolve labels in other source documents without an adapter.
 Scope-aware display text such as `Thesis, Chapter 3` is publisher enrichment after target resolution; it is not native reference behavior.
 
+The follow-up reference probe confirmed the split:
+a combined entrypoint containing both chapter and blog source rendered `@ch-02` as a native link with `Section 2`;
+the same blog compiled alone failed with a missing label.
+An adapted per-source HTML input using a generated `#link(...)` rendered the expected cross-source link without including the target source.
+
 7. Can source-local rendering preserve one HTML document per published source Typst document?
 
 Yes.
@@ -258,6 +302,11 @@ Yes in principle by generating a standalone Typst entrypoint for that scope.
 Heading promotion and counter behavior should be implemented as generated Typst transforms or show/set rules at the entrypoint.
 Bibliography support is constrained by the multiple-bibliography limitation if the generated scope contains multiple authored bibliography calls.
 References work when targets are present in the scope compilation.
+
+For counters across source files, the evidence is stronger:
+a combined scope entrypoint that includes `ch-01.typ` then `ch-02.typ` lets Typst naturally render top-level heading numbers as `1.` and `2.`.
+For one-HTML-per-source output, compiling `ch-02.typ` alone resets the heading counter to `1.`;
+the publisher can continue numbering by seeding the generated source with counter state such as `#counter(heading).update(1)` before the first heading, which rendered `ch-02` as `2.` and its nested heading as `2.1.`.
 
 9. What exact Typst crate APIs are required?
 
@@ -282,6 +331,7 @@ References work when targets are present in the scope compilation.
 - Multiple bibliographies in one compiled document are not supported in Typst 0.14.2.
 - Standard references require labels to exist in the same compiled document.
 - Hidden target inclusion pollutes introspection and bibliography inputs, so it is not a clean cross-source reference solution.
+- Cross-source counters in per-source HTML also require an adapter: independent source compilation resets counters unless the publisher seeds counter state in the generated source.
 - Scope-aware reference display text is not native.
 - Heading promotion through show rules is brittle; generated-source or AST transforms are cleaner.
 - Inspection of scope inheritance, graph order, routes, duplicate ids, and duplicate display titles is publisher responsibility.
@@ -300,12 +350,14 @@ Recommended slices:
 5. Generate render entrypoints for source-local HTML, whole publication, named scope, and explicit scope union.
 6. Preserve ordinary Typst calls inside generated entrypoints wherever possible, and use generated bounded selectors for contiguous windows where a Typst function accepts a selector.
 7. Add narrow adapters for per-source cross-source references and titled-scope display enrichment.
-8. Treat multiple authored bibliographies in one generated document as a known risk requiring either PRD revision, an authoring restriction, or a bibliography consolidation adapter.
+8. Add counter-state seeding for per-source HTML when a multi-source scope requires continued numbering across routed source documents.
+9. Treat multiple authored bibliographies in one generated document as a known risk requiring either PRD revision, an authoring restriction, or a bibliography consolidation adapter.
 
 == Risks and unresolved questions
 
 - Multiple ordinary `#bibliography(...)` calls in one generated document are currently blocked by Typst 0.14.2.
 - Cross-source HTML references need a concrete adapter design that keeps lookup standard where possible while producing correct links and display text.
+- Cross-source HTML counters need a concrete state model for which scopes reset counters and which scopes continue numbering across source documents.
 - Heading promotion for scope PDFs should be specified as an entrypoint transform, including whether labels remain stable after transformed heading emission.
 - `publisher.in-scope(...)` authoring syntax should be clarified: it cannot directly mutate Typst's current introspection boundary; it triggers publisher-generated region rendering.
 - The PRD should define whether an authored bibliography inside a child source should be preserved, suppressed, or consolidated when rendering a parent scope.
