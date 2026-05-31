@@ -34,6 +34,9 @@ Scopes should support Typst-native selection and rendering behavior within that 
 A scope declaration is authored in a source Typst document.
 By default, the scope is rooted at the declaring source document and covers that document plus all source documents reachable from it through the publisher's source-document graph.
 If a nested reachable source document declares a scope of the same kind, that nested scope shadows the inherited scope for that kind.
+Publication scope declarations are source-document-level metadata.
+They apply to the declaring source document and its published descendants regardless of textual position in the source document.
+If authors need lexical sub-document regions later, that should be a separate wrapper-style feature, not the default publication scope behavior.
 Scopes may overlap.
 The model should not force a source document or content region into exactly one scope.
 
