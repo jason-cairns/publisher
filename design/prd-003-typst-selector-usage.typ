@@ -59,11 +59,17 @@ Scoped rendering can be added as an optional projection or edition mode, but it 
 Standard Typst `#include` should remain available for literal inclusion.
 The publisher should not reinterpret every include as a routed publication edge, because authors may reasonably want to inline Typst content without creating a separate HTML document or source-document boundary.
 
-Publication graph edges therefore need an explicit publisher form, such as `#publish(...)` or `#child(...)`.
+Publication graph edges therefore need an explicit publisher form.
+The target API should be `#publish(...)`.
+The older `#child(...)` language should not be the milestone target because it pulls the user-facing model back toward source-file nodes and trees.
+
 The authoring distinction should be:
 
 - `#include "summary.typ"` means literal Typst inclusion in the current source document.
-- `#publish("writing.typ")` or `#child("writing.typ")` means include another source Typst document in the publication graph and render it as its own HTML document in the HTML edition.
+- `#publish("writing.typ")` means include another source Typst document in the publication graph and render it as its own HTML document in the HTML edition.
+
+`#publish(path, ..options)` declares a routed source document in the publication graph.
+The graph can still be ordered and parented by declaration position, but the API should name the publishing outcome rather than asking authors to think in nodes.
 
 Candidate authoring shape:
 
