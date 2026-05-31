@@ -50,6 +50,27 @@ Navigation, outlines, bibliographies, queries, counters, labels, and references 
 Any navigation helper introduced later should be explicitly a rendering helper, not a scope declaration or a hidden query system.
 For example, a future `#publisher.nav(target: heading.where(level: 1))` would be a convenience renderer inside a scope, while `#scope(kind: "nav")` would only mark the region.
 
+Discovery should focus on a small scope-boundary adapter for Typst selectors.
+The publisher may provide current-scope boundaries to Typst through labels, metadata, locations, selectors, context helpers, or another Typst-native mechanism, but selection should remain Typst-native.
+
+Candidate shapes to investigate:
+
+```typ
+#context outline(
+  target: heading.where(level: 1).and(publisher.current-scope())
+)
+```
+
+or, if selector composition cannot express the boundary directly:
+
+```typ
+#context publisher.scoped[
+  #outline(target: heading.where(level: 1))
+]
+```
+
+The milestone should avoid introducing a replacement query API such as `publisher.query(scope: "current", select: "headings")`.
+
 == Source document semantics
 
 `Node` should stop being core domain language for this milestone.
