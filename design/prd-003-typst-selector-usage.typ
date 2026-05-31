@@ -95,6 +95,26 @@ Candidate shape:
 
 In this shape, the scope id/name and metadata help authors and helpers identify regions, but outline, bibliography, navigation, references, counters, and labels remain Typst-native behavior inside the selected region.
 
+== Reference semantics
+
+The target model should not introduce scoped reference lookup.
+Labels should be globally unique across a publication, and authors should use standard Typst reference syntax such as `@label` or `#ref(<label>)`.
+
+The publisher should preserve normal Typst lookup semantics.
+It should not reinterpret ordinary references as "current scope first" lookups.
+
+The publisher may add scope-aware display context after a reference target is resolved.
+When a reference crosses a meaningful named scope boundary, the rendered reference should be able to include the target's containing scope context.
+For example, a blog post reference to a thesis chapter may render as `Thesis, Chapter 3`.
+
+Lookup and display are separate concerns:
+
+- Lookup answers which globally unique label is referenced.
+- Scope context answers how that target should be described from the origin.
+
+Inside the same meaningful scope, references should behave like normal local Typst references.
+Scope context should be added when the origin and target cross a meaningful named scope boundary, not merely because the target belongs to a named scope.
+
 == Source document semantics
 
 `Node` should stop being core domain language for this milestone.
