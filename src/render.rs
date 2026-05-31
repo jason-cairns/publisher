@@ -187,7 +187,7 @@ fn render_html_pages(
         let world = AssemblyWorld::new(
             &options.output_dir,
             &options.source_root,
-            &render_source.virtual_path,
+            &render_source.html_virtual_path,
         );
         let html_document = typst::compile::<typst_html::HtmlDocument>(&world)
             .output
@@ -214,7 +214,8 @@ fn html_path_for_route(output_dir: &Path, html_route: &str) -> PathBuf {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct RenderSource {
-    virtual_path: String,
+    html_virtual_path: String,
+    pdf_virtual_path: String,
     html_path: PathBuf,
 }
 
@@ -230,23 +231,27 @@ fn write_render_sources(
 
     let mut render_sources = Vec::new();
     for node in &publication.nodes {
-        let virtual_path = generated_typst_path(&node.source_path);
-        let typst_path = options.output_dir.join(&virtual_path);
-        if let Some(parent) = typst_path.parent() {
-            fs::create_dir_all(parent).map_err(|source| RenderError::CreateOutputDir {
-                path: parent.to_path_buf(),
-                source,
-            })?;
-        }
+        let html_virtual_path = generated_html_typst_path(&node.source_path);
+        write_generated_node_source(
+            publication,
+            node,
+            RenderBoundary::HtmlSource,
+            &options.output_dir,
+            &html_virtual_path,
+        )?;
 
-        let source = renderable_node_source(publication, node);
-        fs::write(&typst_path, source).map_err(|source| RenderError::AssemblyWrite {
-            path: typst_path,
-            source,
-        })?;
+        let pdf_virtual_path = generated_pdf_typst_path(&node.source_path);
+        write_generated_node_source(
+            publication,
+            node,
+            RenderBoundary::CombinedPdf,
+            &options.output_dir,
+            &pdf_virtual_path,
+        )?;
 
         render_sources.push(RenderSource {
-            virtual_path,
+            html_virtual_path,
+            pdf_virtual_path,
             html_path: html_path_for_route(&options.output_dir, &node.html_route),
         });
     }
@@ -254,8 +259,34 @@ fn write_render_sources(
     Ok(render_sources)
 }
 
-fn generated_typst_path(source_path: &str) -> String {
+fn write_generated_node_source(
+    publication: &Publication,
+    node: &Node,
+    boundary: RenderBoundary,
+    output_dir: &Path,
+    virtual_path: &str,
+) -> Result<(), RenderError> {
+    let typst_path = output_dir.join(virtual_path);
+    if let Some(parent) = typst_path.parent() {
+        fs::create_dir_all(parent).map_err(|source| RenderError::CreateOutputDir {
+            path: parent.to_path_buf(),
+            source,
+        })?;
+    }
+
+    let source = renderable_node_source(publication, node, boundary);
+    fs::write(&typst_path, source).map_err(|source| RenderError::AssemblyWrite {
+        path: typst_path,
+        source,
+    })
+}
+
+fn generated_html_typst_path(source_path: &str) -> String {
     format!("typst/{source_path}")
+}
+
+fn generated_pdf_typst_path(source_path: &str) -> String {
+    format!("typst-pdf/{source_path}")
 }
 
 fn render_pdf_source(render_sources: &[RenderSource]) -> String {
@@ -265,7 +296,7 @@ fn render_pdf_source(render_sources: &[RenderSource]) -> String {
             writeln!(source, "#pagebreak()").unwrap();
             writeln!(source).unwrap();
         }
-        writeln!(source, "#include \"{}\"", render_source.virtual_path).unwrap();
+        writeln!(source, "#include \"{}\"", render_source.pdf_virtual_path).unwrap();
     }
     source
 }
@@ -316,6 +347,13 @@ impl AssemblyWorld {
         }
 
         if let Ok(original_relative) = relative.strip_prefix("typst") {
+            let fallback = self.fallback_root_dir.join(original_relative);
+            if fallback.exists() {
+                return Ok(fallback);
+            }
+        }
+
+        if let Ok(original_relative) = relative.strip_prefix("typst-pdf") {
             let fallback = self.fallback_root_dir.join(original_relative);
             if fallback.exists() {
                 return Ok(fallback);
@@ -582,16 +620,129 @@ pub fn render_assembly(publication: &Publication) -> String {
     build_assembly(publication).to_typst()
 }
 
-fn renderable_node_source(publication: &Publication, node: &Node) -> String {
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum RenderBoundary {
+    HtmlSource,
+    CombinedPdf,
+}
+
+fn renderable_node_source(
+    publication: &Publication,
+    node: &Node,
+    boundary: RenderBoundary,
+) -> String {
     let mut placeholders = ProjectionPlaceholders::new(publication, node);
     let mut source =
         replace_publisher_projection_calls(&node.authored_source.typst, &mut placeholders);
     source = lower_scope_local_outlines(publication, node, &source);
+    source = lower_bibliographies(publication, node, boundary, &source);
     let inherited_navigation = placeholders.remaining_navigation_placeholders();
     if !inherited_navigation.is_empty() {
         source = format!("{inherited_navigation}\n\n{source}");
     }
     sanitize_reference_shorthand(&source)
+}
+
+fn lower_bibliographies(
+    publication: &Publication,
+    node: &Node,
+    boundary: RenderBoundary,
+    source: &str,
+) -> String {
+    if boundary == RenderBoundary::HtmlSource {
+        return source.to_string();
+    }
+
+    let mut out = String::with_capacity(source.len());
+    let mut index = 0;
+    let mut replaced = 0usize;
+
+    while index < source.len() {
+        if let Some(open_paren) = bibliography_call_at(source, index) {
+            if let Some(end) = find_call_end(source, open_paren) {
+                replaced += 1;
+                out.push_str(&combined_render_bibliography_placeholder(
+                    publication,
+                    node,
+                    replaced,
+                ));
+                index = end;
+                continue;
+            }
+        }
+
+        let ch = source[index..]
+            .chars()
+            .next()
+            .expect("index is within source");
+        out.push(ch);
+        index += ch.len_utf8();
+    }
+
+    out
+}
+
+fn bibliography_call_at(source: &str, index: usize) -> Option<usize> {
+    let name = "#bibliography";
+    if !source[index..].starts_with(name) {
+        return None;
+    }
+
+    let mut open_paren = index + name.len();
+    while let Some(ch) = source[open_paren..].chars().next() {
+        if !ch.is_whitespace() {
+            break;
+        }
+        open_paren += ch.len_utf8();
+    }
+
+    if source[open_paren..].starts_with('(') {
+        Some(open_paren)
+    } else {
+        None
+    }
+}
+
+fn combined_render_bibliography_placeholder(
+    publication: &Publication,
+    node: &Node,
+    bibliography_index: usize,
+) -> String {
+    let bibliography_sources = bibliography_sources_for_node(publication, node);
+    let source = bibliography_sources
+        .get(bibliography_index.saturating_sub(1))
+        .map(String::as_str)
+        .unwrap_or("<unknown>");
+    let scope = nearest_publication_scope(publication, node)
+        .map(|scope| scope.id.to_string())
+        .unwrap_or_else(|| "<none>".to_string());
+
+    let mut detail = String::new();
+    writeln!(detail, "source: {source}").unwrap();
+    writeln!(detail, "scope: {scope}").unwrap();
+    writeln!(detail, "render-boundary: combined-pdf").unwrap();
+    writeln!(
+        detail,
+        "note: ordinary bibliography call preserved in source-local HTML input"
+    )
+    .unwrap();
+
+    format!(
+        "#block(stroke: gray, inset: 8pt)[\n*Scoped bibliography*\n{}\n]",
+        fenced_code_block("text", detail.trim_end())
+    )
+}
+
+fn bibliography_sources_for_node(publication: &Publication, node: &Node) -> Vec<String> {
+    publication
+        .properties_for_node(&node.id)
+        .into_iter()
+        .filter(|property| property.key == "bibliography-source")
+        .filter_map(|property| match &property.value {
+            Value::String(value) => Some(value.clone()),
+            _ => None,
+        })
+        .collect()
 }
 
 fn lower_scope_local_outlines(publication: &Publication, node: &Node, source: &str) -> String {

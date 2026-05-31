@@ -117,9 +117,9 @@ fn render_publication_writes_one_html_page_per_reachable_node() {
     assert!(output_dir.join("typst/writing/blog-1.typ").is_file());
 
     let pdf_source = fs::read_to_string(output_dir.join("api-sketch.typ")).unwrap();
-    assert!(pdf_source.contains("#include \"typst/index.typ\""));
-    assert!(pdf_source.contains("#include \"typst/writing.typ\""));
-    assert!(pdf_source.contains("#include \"typst/writing/blog-1.typ\""));
+    assert!(pdf_source.contains("#include \"typst-pdf/index.typ\""));
+    assert!(pdf_source.contains("#include \"typst-pdf/writing.typ\""));
+    assert!(pdf_source.contains("#include \"typst-pdf/writing/blog-1.typ\""));
     assert!(pdf_source.contains("#pagebreak()"));
     assert!(!pdf_source.contains("Node id:"));
     assert!(!pdf_source.contains("Authored source:"));
@@ -224,6 +224,101 @@ fn render_publication_lowers_prd003_outline_to_active_scope_headings() {
     assert!(writing_html.contains("scope: writing"));
     assert!(writing_html.contains("Blog One"));
     assert!(!writing_html.contains("CV"));
+}
+
+#[test]
+fn render_publication_preserves_source_bibliography_for_html_and_lowers_for_combined_pdf() {
+    let fixture = TestFixture::new("publisher-prd003-bibliography");
+    fixture.write(
+        "publisher.typ",
+        include_str!("../examples/prd003_discovery_site/publisher.typ"),
+    );
+    fixture.write(
+        "works.yml",
+        r#"web:
+  type: Web
+  title: Web Reference
+  author: Doe, Jane
+  url: https://example.com/web
+
+article:
+  type: Article
+  title: Article Reference
+  author: Roe, Sam
+  parent:
+    type: Periodical
+    title: Journal
+"#,
+    );
+    fixture.write(
+        "index.typ",
+        r#"#import "publisher.typ": scope, publish
+= Home
+#publish("writing/blog-1.typ")
+#publish("thesis/ch-1.typ")
+#scope("home")
+"#,
+    );
+    fixture.write(
+        "writing/blog-1.typ",
+        r#"#import "../publisher.typ": scope
+= Blog One
+#scope("writing", title: [Writing])
+
+This article cites @web.
+
+#bibliography("../works.yml")
+"#,
+    );
+    fixture.write(
+        "thesis/ch-1.typ",
+        r#"#import "../publisher.typ": scope
+= Chapter One
+#scope("thesis", title: [Thesis])
+
+This chapter cites @article.
+
+#bibliography("../works.yml")
+"#,
+    );
+
+    let publication = parse_publication(fixture.path("index.typ")).unwrap();
+    let report = publication.validate();
+    assert!(
+        report.errors.is_empty(),
+        "expected valid fixture, got {:#?}",
+        report.errors
+    );
+
+    let output_dir = temp_render_dir("publisher-prd003-bibliography-render");
+    let options = RenderOptions {
+        source_root: fixture.root.clone(),
+        output_dir: output_dir.clone(),
+        artifact_name: "prd003-bibliography".to_string(),
+    };
+
+    render_publication(&publication, &options).unwrap();
+
+    let html_blog_source = fs::read_to_string(output_dir.join("typst/writing/blog-1.typ")).unwrap();
+    assert!(html_blog_source.contains("#bibliography(\"../works.yml\")"));
+    assert_eq!(html_blog_source.matches("#bibliography(").count(), 1);
+
+    let pdf_blog_source =
+        fs::read_to_string(output_dir.join("typst-pdf/writing/blog-1.typ")).unwrap();
+    assert!(!pdf_blog_source.contains("#bibliography("));
+    assert!(pdf_blog_source.contains("Scoped bibliography"));
+    assert!(pdf_blog_source.contains("scope: writing"));
+    assert!(pdf_blog_source.contains("source: ../works.yml"));
+
+    let pdf_chapter_source =
+        fs::read_to_string(output_dir.join("typst-pdf/thesis/ch-1.typ")).unwrap();
+    assert!(!pdf_chapter_source.contains("#bibliography("));
+    assert!(pdf_chapter_source.contains("Scoped bibliography"));
+    assert!(pdf_chapter_source.contains("scope: thesis"));
+
+    let pdf_source = fs::read_to_string(output_dir.join("prd003-bibliography.typ")).unwrap();
+    assert!(pdf_source.contains("#include \"typst-pdf/writing/blog-1.typ\""));
+    assert!(pdf_source.contains("#include \"typst-pdf/thesis/ch-1.typ\""));
 }
 
 fn temp_render_dir(prefix: &str) -> PathBuf {
