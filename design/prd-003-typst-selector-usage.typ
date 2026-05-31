@@ -176,6 +176,15 @@ Instead, when the publisher renders a source document, scope, or edition, it sho
 Discovery should test whether the current scope declaration interface is sufficient for this.
 The open interface question is how a non-rendering `#scope(...)` declaration becomes a Typst-visible region boundary for ordinary Typst functions without requiring authors to wrap every rendering call.
 
+Edition rendering should be chosen by the CLI or runtime publisher invocation, not by authored source code.
+The source declares publication structure and scope metadata; it should not contain an `#edition(...)` configuration API for deciding which edition is rendered.
+
+Normal Typst functions should do the obvious thing in the current rendered region.
+For example, `#bibliography(...)`, `#outline(...)`, and `query(...)` should operate over the source document, scope, or whole-publication region that the publisher is currently rendering.
+
+When an author wants behavior across a different region, such as a bibliography or outline across many scopes, named scope contexts should be the explicit escape hatch.
+Discovery should investigate the smallest Typst-native way to express that named context without introducing replacement publisher query/rendering APIs.
+
 == Source document semantics
 
 `Node` should stop being core domain language for this milestone.
@@ -206,6 +215,8 @@ The graph can still be ordered and parented by declaration position, but the API
 It is not literal inclusion; use Typst `#include` when the target content should be inserted at the call site.
 
 At its authored call site, `#publish(...)` contributes a publication edge and may render as a link, card, or entry for the target source document.
+It should inherit the active scope context from the source document where it is declared.
+Authors should not need to pass `scope:` to `#publish(...)` for the normal case.
 In the HTML edition, it establishes a routed HTML document for the target source document.
 In a combined PDF edition, the publisher may assemble published source documents in publication-graph order as an edition concern, independently of the visual content emitted at each `#publish(...)` call site.
 
