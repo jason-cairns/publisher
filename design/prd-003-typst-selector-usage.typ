@@ -31,9 +31,17 @@ Discovery should therefore investigate how to evaluate Typst-native selectors in
 A scope is primarily a region over publication content, not necessarily a separate compiled document.
 Scopes should support Typst-native selection and rendering behavior within that region while preserving the surrounding publication model.
 
+A scope declaration is authored in a source Typst document.
+By default, the scope is rooted at the declaring source document and covers that document plus all source documents reachable from it through the publisher's source-document graph.
+If a nested reachable source document declares a scope of the same kind, that nested scope shadows the inherited scope for that kind.
+
 A scope may also be rendered as a standalone compilable unit when an edition needs it.
 That standalone rendering is a projection of the scoped region, not the definition of scope itself.
 Discovery should cover the transformations required for scoped compilation, including heading promotion, local outline behavior, bibliography behavior, counters, labels, and references.
+
+Discovery should make scope extent inspectable and diagnosable.
+Authors should be able to see exactly which source documents a scope covers, why a document is included or excluded, and where same-kind shadowing changes the active scope.
+Scope names should default from the declaring source document's first suitable heading, with an explicit name available as an override.
 
 == Source document semantics
 
