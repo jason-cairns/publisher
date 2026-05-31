@@ -413,6 +413,160 @@ Evidence must show:
 - `writing + thesis` union entrypoint;
 - per-source HTML route outputs.
 
+== Definition of done
+
+All slices are complete only when the implementation satisfies every PRD-003 acceptance point below.
+The final orchestrator closeout should cite the slice, command, and artifact proving each row.
+
+=== Authoring and graph
+
+- Fixture shape:
+  `index.typ` publishes `writing.typ`, `thesis/intro.typ`, and `cv.typ`.
+  Covered by slices 1 and 2.
+  Validate with `cargo run --example prd003_discovery` and PRD-003 inspect output.
+
+- Writing scope:
+  `writing.typ` declares `#scope("writing", title: [Writing])` and publishes at least two writing source documents.
+  Covered by slices 1, 2, 3, and 4.
+  Validate with parser/model tests and inspect output.
+
+- Thesis scope:
+  `thesis/intro.typ` declares `#scope("thesis", title: [Thesis])` and publishes at least one thesis chapter.
+  Covered by slices 1, 2, 3, and 4.
+  Validate with parser/model tests and inspect output.
+
+- Literal include remains distinct:
+  `#include "summary.typ"` is literal content and not a routed source document.
+  Covered by slice 2.
+  Validate with graph/route inspect output.
+
+- HTML routing:
+  The HTML edition emits one HTML document per published source Typst document.
+  Covered by slices 2 and 9.
+  Validate with render tests and generated HTML paths.
+
+=== Scope semantics and diagnostics
+
+- Scope extents:
+  Explicit scopes cover the declaring source and published descendants, with inherited scopes overlapping child scopes.
+  Covered by slices 3 and 4.
+  Validate with model tests and active scope stack inspect output.
+
+- Inspect output:
+  Inspect shows scope ids, explicit titles, tags, source-document inheritance, active scope stacks, publication graph order, routes, and diagnostics.
+  Covered by slice 4.
+  Validate with a PRD-003 inspect snapshot or focused assertions.
+
+- Duplicate scope ids:
+  Duplicate explicit scope ids are errors.
+  Covered by slices 3 and 4.
+  Validate with model/validation tests.
+
+- Duplicate display titles:
+  Duplicate display titles are warnings, not model errors.
+  Covered by slices 3 and 4.
+  Validate with model/validation tests and inspect diagnostics.
+
+=== Ordinary Typst behavior in scopes
+
+- Scope-local outline:
+  A normal authored `#outline(target: heading.where(level: 1))` renders over the active scope-local region without `publisher.outline(...)`.
+  Covered by slice 5.
+  Validate with render output showing only headings in the active scope.
+
+- Scope-local bibliography:
+  A normal authored `#bibliography("works.yml")` renders for the active scope/source boundary under the one-bibliography-per-scope rule.
+  Covered by slice 6.
+  Validate with render output and duplicate-bibliography diagnostics.
+
+- Explicit scope union:
+  `publisher.in-scope("writing", "thesis")[...]` can render an outline or bibliography over the union in publication graph order.
+  Covered by slices 5, 6, and 9.
+  Validate with generated union entrypoint or bounded selector output.
+
+- Counters across sources:
+  A numbered multi-source scope can render `ch-01.typ` and `ch-02.typ` as `1.` and `2.` in scope/edition output, and can continue numbering in per-source HTML when required.
+  Covered by slice 8.
+  Validate with counter fixture expectations from `examples/prd003_counter_ref_site/`.
+
+- Source-local resets:
+  Implicit source-document scopes can still reset local behavior when they are the intended boundary.
+  Covered by slices 3, 6, and 8.
+  Validate with source-local bibliography/counter tests.
+
+=== References
+
+- Same-compilation references:
+  Standard Typst references preserve native lookup when origin and target are present in the same generated entrypoint.
+  Covered by slices 7 and 9.
+  Validate with combined reference fixture output.
+
+- Cross-source HTML references:
+  A standard authored reference from outside `thesis` to a globally unique thesis label can render in per-source HTML without hidden inclusion.
+  Covered by slice 7.
+  Validate with generated HTML link output.
+
+- Scope-aware reference display:
+  Cross-scope references can include the nearest explicit titled target scope, such as `Thesis`, when origin and target cross a meaningful titled-scope boundary.
+  Covered by slice 7.
+  Validate with rendered HTML/PDF display text and titled-scope tests.
+
+- Label rules:
+  Labels are globally unique across the publication, and reference lookup is not current-scope-first.
+  Covered by slices 3, 4, and 7.
+  Validate with duplicate-label and cross-scope reference tests.
+
+=== Render targets and CLI/API capability
+
+- Whole publication render:
+  The publisher can generate and compile a whole-publication entrypoint.
+  Covered by slice 9.
+  Validate with render tests.
+
+- Named scope render:
+  The publisher can generate and compile a named-scope entrypoint, such as `thesis`.
+  Covered by slice 9.
+  Validate with render tests.
+
+- Source-local HTML render:
+  The publisher can generate per-source HTML entrypoints and route outputs.
+  Covered by slices 7, 8, and 9.
+  Validate with render tests and generated files.
+
+- Scope inspect command/API:
+  The publisher exposes enough inspect output for `publisher inspect --root index.typ scopes` or the current equivalent.
+  Covered by slice 4.
+  Validate with CLI/example output or snapshot tests.
+
+=== Migration cleanup
+
+- Old authoring APIs:
+  New target docs and fixtures do not rely on `publisher.child`, `publisher.outline`, `publisher.bibliography`, or `publisher.ref`.
+  Covered by slice 10.
+  Validate with docs/examples review and tests.
+
+- Old model terms:
+  `Query`, `Projection`, and user-facing `Node` are demoted from PRD-003 authoring docs.
+  Covered by slice 10.
+  Validate with docs review.
+
+=== Final validation bundle
+
+Run this before claiming PRD-003 complete:
+
+```sh
+cargo test
+cargo run --example prd003_discovery
+typst compile design/prd-003-typst-selector-usage.typ /private/tmp/prd-003-typst-selector-usage.pdf
+typst compile design/prd-003-discovery-report.typ /private/tmp/prd-003-discovery-report.pdf
+typst compile design/prd-003-implementation-slices.typ /private/tmp/prd-003-implementation-slices.pdf
+typst compile docs/model.typ /private/tmp/model.pdf
+typst compile docs/model-map.typ /private/tmp/model-map.pdf
+typst compile docs/api-sketch.typ /private/tmp/api-sketch.pdf
+```
+
+Also run the focused counter/reference fixture commands from the preflight section whenever reference or counter behavior has changed.
+
 == Slice 10: PRD cleanup and migration
 
 Goal:
