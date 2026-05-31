@@ -31,6 +31,7 @@ pub struct RenderedArtifacts {
     pub typst_path: PathBuf,
     pub pdf_path: PathBuf,
     pub html_paths: Vec<PathBuf>,
+    pub entrypoint_paths: Vec<PathBuf>,
 }
 
 #[derive(Debug)]
@@ -164,11 +165,13 @@ pub fn render_publication(
     }
 
     let html_paths = render_html_pages(&render_sources, options)?;
+    let entrypoint_paths = write_scope_entrypoints(publication, &render_sources, options)?;
 
     Ok(RenderedArtifacts {
         typst_path,
         pdf_path,
         html_paths,
+        entrypoint_paths,
     })
 }
 
@@ -216,6 +219,7 @@ fn html_path_for_route(output_dir: &Path, html_route: &str) -> PathBuf {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct RenderSource {
+    node_id: NodeId,
     html_virtual_path: String,
     pdf_virtual_path: String,
     html_path: PathBuf,
@@ -252,6 +256,7 @@ fn write_render_sources(
         )?;
 
         render_sources.push(RenderSource {
+            node_id: node.id.clone(),
             html_virtual_path,
             pdf_virtual_path,
             html_path: html_path_for_route(&options.output_dir, &node.html_route),
@@ -259,6 +264,97 @@ fn write_render_sources(
     }
 
     Ok(render_sources)
+}
+
+fn write_scope_entrypoints(
+    publication: &Publication,
+    render_sources: &[RenderSource],
+    options: &RenderOptions,
+) -> Result<Vec<PathBuf>, RenderError> {
+    let mut paths = Vec::new();
+    let scopes = explicit_publication_scopes(publication);
+
+    for scope in &scopes {
+        let path = options
+            .output_dir
+            .join("scopes")
+            .join(format!("{}.typ", entrypoint_file_stem(scope.id.as_str())));
+        write_entrypoint(
+            &path,
+            &render_scope_source(publication, render_sources, &[*scope]),
+        )?;
+        paths.push(path);
+    }
+
+    for left_index in 0..scopes.len() {
+        for right_index in left_index + 1..scopes.len() {
+            let left = scopes[left_index];
+            let right = scopes[right_index];
+            let path = options.output_dir.join("scope-unions").join(format!(
+                "{}+{}.typ",
+                entrypoint_file_stem(left.id.as_str()),
+                entrypoint_file_stem(right.id.as_str())
+            ));
+            write_entrypoint(
+                &path,
+                &render_scope_source(publication, render_sources, &[left, right]),
+            )?;
+            paths.push(path);
+        }
+    }
+
+    Ok(paths)
+}
+
+fn write_entrypoint(path: &Path, source: &str) -> Result<(), RenderError> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|source| RenderError::CreateOutputDir {
+            path: parent.to_path_buf(),
+            source,
+        })?;
+    }
+
+    fs::write(path, source).map_err(|source| RenderError::AssemblyWrite {
+        path: path.to_path_buf(),
+        source,
+    })
+}
+
+fn explicit_publication_scopes(publication: &Publication) -> Vec<&Scope> {
+    publication
+        .scopes
+        .iter()
+        .filter(|scope| !scope.implicit && scope.kind == ScopeKind::Publication)
+        .collect()
+}
+
+fn render_scope_source(
+    publication: &Publication,
+    render_sources: &[RenderSource],
+    scopes: &[&Scope],
+) -> String {
+    let included_sources: Vec<_> = render_sources
+        .iter()
+        .filter(|render_source| {
+            scopes
+                .iter()
+                .any(|scope| scope.covers(publication, &render_source.node_id))
+        })
+        .collect();
+    render_pdf_source(included_sources)
+}
+
+fn entrypoint_file_stem(value: &str) -> String {
+    value
+        .chars()
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_') {
+                ch
+            } else {
+                '_'
+            }
+        })
+        .collect()
 }
 
 fn write_generated_node_source(
@@ -291,9 +387,9 @@ fn generated_pdf_typst_path(source_path: &str) -> String {
     format!("typst-pdf/{source_path}")
 }
 
-fn render_pdf_source(render_sources: &[RenderSource]) -> String {
+fn render_pdf_source<'a>(render_sources: impl IntoIterator<Item = &'a RenderSource>) -> String {
     let mut source = String::new();
-    for (index, render_source) in render_sources.iter().enumerate() {
+    for (index, render_source) in render_sources.into_iter().enumerate() {
         if index > 0 {
             writeln!(source, "#pagebreak()").unwrap();
             writeln!(source).unwrap();

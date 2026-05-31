@@ -155,6 +155,58 @@ fn render_publication_writes_one_html_page_per_reachable_node() {
 }
 
 #[test]
+fn render_publication_writes_named_scope_and_union_entrypoints() {
+    let publication = parse_publication("examples/prd003_discovery_site/index.typ").unwrap();
+    let report = publication.validate();
+    assert!(
+        report.errors.is_empty(),
+        "expected valid fixture, got {:#?}",
+        report.errors
+    );
+
+    let output_dir = temp_render_dir("publisher-prd003-entrypoints");
+    let options = RenderOptions {
+        source_root: "examples/prd003_discovery_site".into(),
+        output_dir: output_dir.clone(),
+        artifact_name: "prd003-entrypoints".to_string(),
+    };
+
+    let artifacts = render_publication(&publication, &options).unwrap();
+
+    assert!(
+        artifacts
+            .entrypoint_paths
+            .contains(&output_dir.join("scopes/thesis.typ"))
+    );
+    assert!(
+        artifacts
+            .entrypoint_paths
+            .contains(&output_dir.join("scope-unions/writing+thesis.typ"))
+    );
+
+    let thesis = fs::read_to_string(output_dir.join("scopes/thesis.typ")).unwrap();
+    assert!(thesis.contains("#include \"typst-pdf/thesis/intro.typ\""));
+    assert!(thesis.contains("#include \"typst-pdf/thesis/ch-1.typ\""));
+    assert!(!thesis.contains("#include \"typst-pdf/writing.typ\""));
+    assert!(!thesis.contains("#include \"typst-pdf/cv.typ\""));
+
+    let writing_thesis =
+        fs::read_to_string(output_dir.join("scope-unions/writing+thesis.typ")).unwrap();
+    assert!(writing_thesis.contains("#include \"typst-pdf/writing.typ\""));
+    assert!(writing_thesis.contains("#include \"typst-pdf/writing/blog-1.typ\""));
+    assert!(writing_thesis.contains("#include \"typst-pdf/writing/blog-2.typ\""));
+    assert!(writing_thesis.contains("#include \"typst-pdf/thesis/intro.typ\""));
+    assert!(writing_thesis.contains("#include \"typst-pdf/thesis/ch-1.typ\""));
+    assert!(!writing_thesis.contains("#include \"typst-pdf/cv.typ\""));
+    assert_eq!(
+        writing_thesis
+            .matches("#include \"typst-pdf/thesis/ch-1.typ\"")
+            .count(),
+        1
+    );
+}
+
+#[test]
 fn render_publication_lowers_prd003_outline_to_active_scope_headings() {
     let fixture = TestFixture::new("publisher-prd003-outline");
     fixture.write(
