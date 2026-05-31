@@ -25,3 +25,12 @@ Typst selectors and Typst's own introspection/query machinery should describe se
 Selectors run within a publisher scope; they do not replace scope.
 
 Discovery should therefore investigate how to evaluate Typst-native selectors inside publisher-defined scopes, rather than how to evolve the current `Query` model.
+
+== Scope semantics
+
+A scope is primarily a region over publication content, not necessarily a separate compiled document.
+Scopes should support Typst-native selection and rendering behavior within that region while preserving the surrounding publication model.
+
+A scope may also be rendered as a standalone compilable unit when an edition needs it.
+That standalone rendering is a projection of the scoped region, not the definition of scope itself.
+Discovery should cover the transformations required for scoped compilation, including heading promotion, local outline behavior, bibliography behavior, counters, labels, and references.
