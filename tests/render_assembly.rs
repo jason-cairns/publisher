@@ -154,10 +154,116 @@ fn render_publication_writes_one_html_page_per_reachable_node() {
     assert!(cv.contains("kind: navigation"));
 }
 
+#[test]
+fn render_publication_lowers_prd003_outline_to_active_scope_headings() {
+    let fixture = TestFixture::new("publisher-prd003-outline");
+    fixture.write(
+        "publisher.typ",
+        include_str!("../examples/prd003_discovery_site/publisher.typ"),
+    );
+    fixture.write(
+        "index.typ",
+        r#"#import "publisher.typ": scope, publish
+= Home
+#publish("writing.typ")
+#publish("cv.typ")
+#scope("home")
+"#,
+    );
+    fixture.write(
+        "writing.typ",
+        r#"#import "publisher.typ": scope, publish
+= Writing
+#scope("writing", title: [Writing])
+#publish("writing/blog-1.typ")
+
+#outline(target: heading.where(level: 1))
+"#,
+    );
+    fixture.write(
+        "writing/blog-1.typ",
+        r#"#import "../publisher.typ": scope
+= Blog One
+"#,
+    );
+    fixture.write(
+        "cv.typ",
+        r#"#import "publisher.typ": scope
+= CV
+#scope("cv", title: [CV])
+"#,
+    );
+
+    let publication = parse_publication(fixture.path("index.typ")).unwrap();
+    let report = publication.validate();
+    assert!(
+        report.errors.is_empty(),
+        "expected valid fixture, got {:#?}",
+        report.errors
+    );
+
+    let output_dir = temp_render_dir("publisher-prd003-outline-render");
+    let options = RenderOptions {
+        source_root: fixture.root.clone(),
+        output_dir: output_dir.clone(),
+        artifact_name: "prd003-outline".to_string(),
+    };
+
+    render_publication(&publication, &options).unwrap();
+
+    let generated_writing = fs::read_to_string(output_dir.join("typst/writing.typ")).unwrap();
+    assert!(!generated_writing.contains("#outline("));
+    assert!(generated_writing.contains("Scope-local outline"));
+    assert!(generated_writing.contains("scope: writing"));
+    assert!(generated_writing.contains("- Writing"));
+    assert!(generated_writing.contains("- Blog One"));
+    assert!(!generated_writing.contains("- CV"));
+
+    let writing_html = fs::read_to_string(output_dir.join("writing.html")).unwrap();
+    assert!(writing_html.contains("Scope-local outline"));
+    assert!(writing_html.contains("scope: writing"));
+    assert!(writing_html.contains("Blog One"));
+    assert!(!writing_html.contains("CV"));
+}
+
 fn temp_render_dir(prefix: &str) -> PathBuf {
     let unique = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
     std::env::temp_dir().join(format!("{prefix}-{unique}"))
+}
+
+struct TestFixture {
+    root: PathBuf,
+}
+
+impl TestFixture {
+    fn new(name: &str) -> Self {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("{name}-{unique}"));
+        fs::create_dir_all(&root).unwrap();
+        Self { root }
+    }
+
+    fn path(&self, rel_path: &str) -> PathBuf {
+        self.root.join(rel_path)
+    }
+
+    fn write(&self, rel_path: &str, contents: &str) {
+        let path = self.path(rel_path);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).unwrap();
+        }
+        fs::write(path, contents).unwrap();
+    }
+}
+
+impl Drop for TestFixture {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.root);
+    }
 }

@@ -315,6 +315,13 @@ impl AssemblyWorld {
             return Ok(fallback);
         }
 
+        if let Ok(original_relative) = relative.strip_prefix("typst") {
+            let fallback = self.fallback_root_dir.join(original_relative);
+            if fallback.exists() {
+                return Ok(fallback);
+            }
+        }
+
         Ok(generated)
     }
 }
@@ -579,11 +586,107 @@ fn renderable_node_source(publication: &Publication, node: &Node) -> String {
     let mut placeholders = ProjectionPlaceholders::new(publication, node);
     let mut source =
         replace_publisher_projection_calls(&node.authored_source.typst, &mut placeholders);
+    source = lower_scope_local_outlines(publication, node, &source);
     let inherited_navigation = placeholders.remaining_navigation_placeholders();
     if !inherited_navigation.is_empty() {
         source = format!("{inherited_navigation}\n\n{source}");
     }
     sanitize_reference_shorthand(&source)
+}
+
+fn lower_scope_local_outlines(publication: &Publication, node: &Node, source: &str) -> String {
+    let mut out = String::with_capacity(source.len());
+    let mut index = 0;
+
+    while index < source.len() {
+        if let Some(open_paren) = outline_call_at(source, index) {
+            if let Some(end) = find_call_end(source, open_paren) {
+                let target = source[open_paren + 1..end - 1].trim();
+                out.push_str(&scope_local_outline_block(publication, node, target));
+                index = end;
+                continue;
+            }
+        }
+
+        let ch = source[index..]
+            .chars()
+            .next()
+            .expect("index is within source");
+        out.push(ch);
+        index += ch.len_utf8();
+    }
+
+    out
+}
+
+fn outline_call_at(source: &str, index: usize) -> Option<usize> {
+    let name = "#outline";
+    if !source[index..].starts_with(name) {
+        return None;
+    }
+
+    let mut open_paren = index + name.len();
+    while let Some(ch) = source[open_paren..].chars().next() {
+        if !ch.is_whitespace() {
+            break;
+        }
+        open_paren += ch.len_utf8();
+    }
+
+    if source[open_paren..].starts_with('(') {
+        Some(open_paren)
+    } else {
+        None
+    }
+}
+
+fn scope_local_outline_block(publication: &Publication, node: &Node, target: &str) -> String {
+    let Some(scope) = nearest_publication_scope(publication, node) else {
+        return format!(
+            "#block(stroke: gray, inset: 8pt)[\n*Scope-local outline*\n{}\n]",
+            fenced_code_block("text", "scope: <none>\nheadings: <none>")
+        );
+    };
+
+    let mut detail = String::new();
+    writeln!(detail, "scope: {}", scope.id).unwrap();
+    if !target.is_empty() {
+        writeln!(detail, "target: {target}").unwrap();
+    }
+    writeln!(detail, "headings:").unwrap();
+
+    let headings = scope_outline_headings(publication, scope);
+    if headings.is_empty() {
+        writeln!(detail, "- <none>").unwrap();
+    } else {
+        for heading in headings {
+            writeln!(detail, "- {heading}").unwrap();
+        }
+    }
+
+    format!(
+        "#block(stroke: gray, inset: 8pt)[\n*Scope-local outline*\n{}\n]",
+        fenced_code_block("text", detail.trim_end())
+    )
+}
+
+fn nearest_publication_scope<'a>(publication: &'a Publication, node: &Node) -> Option<&'a Scope> {
+    let spine = publication.spine_for(&node.id).ok()?;
+    spine
+        .scopes
+        .iter()
+        .rev()
+        .filter_map(|scope_id| publication.scope(scope_id))
+        .find(|scope| scope.kind == ScopeKind::Publication)
+}
+
+fn scope_outline_headings(publication: &Publication, scope: &Scope) -> Vec<String> {
+    publication
+        .nodes
+        .iter()
+        .filter(|candidate| scope.covers(publication, &candidate.id))
+        .filter_map(|candidate| title_for_node(publication, &candidate.id))
+        .collect()
 }
 
 struct ProjectionPlaceholders {
