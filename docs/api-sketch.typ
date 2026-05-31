@@ -1,153 +1,138 @@
-#import "@preview/dtree:0.1.1": dtree
+= Publisher API sketch
 
-This gives my notion of how the API should look, with an example site given.
-
-The example file structure is as follows.
-Note how the directory structure is not relevant, but each source file represents a node.
+This sketch shows the PRD-003 authoring model.
+Authors declare publication edges and scopes, while ordinary Typst calls remain ordinary Typst.
 
 = Files
 
-#dtree(```
+```text
 /
- index.typ
- writing.typ
- writing
-  blog-1.typ
-  blog-2.typ
- thesis
-  intro.typ
-  ch-1.typ
-  bibliography.bib
- cv.typ
- assets
-  img-1.jpg
-  img-1.png
-  img-2.svg
- works.yml
- README.md
-```)
+  index.typ
+  publisher.typ
+  writing.typ
+  writing/
+    blog-1.typ
+    blog-2.typ
+  thesis/
+    intro.typ
+    ch-1.typ
+  cv.typ
+  summary.typ
+  works.yml
+```
 
 == index.typ
 
 ```typ
-#import "/publisher.typ"
+#import "publisher.typ": scope, publish
 
-= My Publication
+= My Publication <home>
 
-Hello, welcome to my publication!
+Welcome.
 
-Here are the contents:
+#publish("writing.typ")
+#publish("thesis/intro.typ")
+#publish("cv.typ")
+#include "summary.typ"
 
-#publisher.outline(depth: 1) // produces an outline of children. Titles taken from their properties.
-
-#publisher.child("writing.typ")
-#publisher.child("thesis/intro.typ")
-#publisher.child("cv.typ")
-#let nav = publisher.scope(kind: "nav") // creates a new "nav" scope. This page and all children will have a nav bar.
-#nav.suppress() // suppress the nav for this page. Child pages will still have one.
+#scope("home", tags: ("nav",))
 ```
 
 == writing.typ
 
 ```typ
-#import "/publisher.typ"
+#import "publisher.typ": scope, publish, in-scope
 
-= Writing // implicitly creates a title property with value "Writing"
+= Writing <writing>
 
-#publisher.children("writing/*.typ") // declares children by file glob
-#publisher.scope(kind: "outline", name: "Writing") // Creates a named scope for all contents, shadowing parent scope, so only writing contents will be shown.
-#publisher.scope(kind: "reference") // "name" field defaults to page title
+#scope("writing", title: [Writing], tags: ("nav",))
 
-// multiple scopes, could be #publisher.scope(kind: ("outline", "reference"))
-// Or even some wrapper for common scope pairings.
+#publish("writing/blog-1.typ")
+#publish("writing/blog-2.typ")
 
-#publisher.outline(depth: 1) // not shown, but default scope is just "nearest". Can be global too.
+#outline(target: heading.where(level: 1))
+
+#in-scope("writing", "thesis")[
+  #outline(target: heading.where(level: 1))
+]
 ```
 
 == writing/blog-1.typ
 
 ```typ
-#import "/publisher.typ"
+#import "../publisher.typ": scope
 
-== Blog 1
+= Blog One <blog-one>
 
-This is my blog. I can have images,
-#figure(
-  image("../assets/img-1.png", width: 80%),
-  caption: [An image of an image.],
-)
-#link("https://example.com")[links], and all other regular typst things.
-I can also add citations @cite, and because this bibliography is scoped to the
-current page, it won't include citations from other nodes.
+This article cites @web.
 
-#publisher.bibliography("works.yml", scope: "current-page")
+#bibliography("../works.yml")
 ```
 
 == writing/blog-2.typ
 
 ```typ
-#import "/publisher.typ"
+#import "../publisher.typ": scope
 
-== Blog 2
+= Blog Two <blog-two>
 
-This blog shows how I can reference labels in other locations.
-I can reference #publisher.ref(<figure-1>) from the thesis, and it will show up here
-as, "Figure 1, Thesis", where the "Figure 1" text is how it would
-typically render, and ", Thesis" is added from the reference scope
-it is found under.
+This post refers to thesis material at @thesis-main.
 ```
 
 == thesis/intro.typ
 
 ```typ
-#import "/publisher.typ"
+#import "../publisher.typ": scope, publish
 
-= Thesis
+= Thesis Introduction <thesis-intro>
 
-#publisher.children("thesis/*.typ") // declares children by file glob (excluding itself)
-#publisher.scope(kind: "outline") // Creates a new scope for all outlines, shadowing parent scope, so only thesis contents will be shown.
-#publisher.scope(kind: "reference") // "name" field defaults to page title
-#publisher.scope(kind: "bibliography")
+#scope("thesis", title: [Thesis], tags: ("nav", "bibliography"))
 
-#publisher.outline(depth: 1) // not shown, but default scope is just "nearest". Can be global too.
-#publisher.outline( // outline follows the standard typst api. (all publisher apis do.)
-  title: [List of Figures],
-  target: figure.where(kind: image),
-)
-#publisher.scope(kind: "nav") // creates a new "nav" scope. This page and all children inherit another nav projection. This stacks below the inherited nav projection.
+#publish("thesis/ch-1.typ")
+
+This source cites @book.
+
+#outline(target: heading.where(level: 1))
+#bibliography("../works.yml")
 ```
 
 == thesis/ch-1.typ
 
 ```typ
-#import "/publisher.typ"
+#import "../publisher.typ": scope
 
-@bib-ref
-```
+= Chapter One <thesis-main>
 
-== thesis/bib
+The first chapter cites @article.
 
-```typ
-#publisher.bibliography("bibliography.bib") // defaults to nearest scope (thesis)
+#bibliography("../works.yml")
 ```
 
 == cv.typ
 
 ```typ
-#nav.suppress()
+#import "publisher.typ": scope
+
+= CV <cv>
+
+#scope("cv", title: [CV], tags: ("nav",))
 
 about me
-
-etc.
 ```
 
-= CLI
+= Publisher behavior
+
+- `#publish(path)` creates a routed publication edge.
+- `#include(path)` remains normal Typst inclusion and does not create a routed publication edge.
+- `#scope(id, title: none, tags: ())` declares a publisher scope over the source document and its published descendants.
+- Ordinary `#outline(...)`, `#bibliography(...)`, `@label` references, counters, and `query(...)` stay authored as ordinary Typst.
+- The publisher may generate scoped Typst entrypoints or per-source HTML adapters before compilation, but those adapters are not author-facing APIs.
+
+= CLI sketch
 
 ```sh
-publisher --help
-  usage:
-    publisher [root node] -T[html|pdf]
-    publisher dot [tree|graph] --incl-external
-    publisher inspect [nodes|scopes|...]
-    publisher install-completions [fish|sh|zsh]
+publisher build index.typ --html --pdf
+publisher inspect index.typ
+publisher render-scope index.typ thesis --pdf
+publisher render-union index.typ writing thesis --pdf
 ```
