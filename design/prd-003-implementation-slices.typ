@@ -23,7 +23,7 @@ If an implementation attempt fails, record the failure and corrected approach in
 
 == Implementation checkpoint
 
-Status after the PRD-003 implementation run that ended at commit `ac7b384`:
+Status after the PRD-003 implementation run that ended at commit `8fbc189`:
 
 - Slice 1 is complete and committed as `84df818 Add PRD-003 marker API`.
   Evidence: `cargo test --test api_sketch_parser` and `cargo run --example prd003_discovery`.
@@ -60,11 +60,18 @@ Status after the PRD-003 implementation run that ended at commit `ac7b384`:
   Rendering now writes reviewable named-scope entrypoint files under `scopes/` and deterministic pairwise scope-union entrypoint files under `scope-unions/`, using generated PDF-boundary sources in publication graph order.
   The `thesis` scope entrypoint includes only thesis sources, and the `writing+thesis` union entrypoint includes writing and thesis sources once each while excluding `cv`.
   This is generation-only entrypoint support; no CLI/API surface for selecting and compiling these entrypoints has been added yet.
+- Slice 10 cleanup is committed as `8fbc189 Clean up PRD-003 authoring docs`.
+  Evidence: `cargo test`, `cargo run --example prd003_discovery`, `typst compile docs/model.typ /private/tmp/model.pdf`, `typst compile docs/model-map.typ /private/tmp/model-map.pdf`, and `typst compile docs/api-sketch.typ /private/tmp/api-sketch.pdf`.
+  User-facing docs now show `#publish(...)`, `#scope(...)`, ordinary `#outline(...)`, ordinary `#bibliography(...)`, and ordinary references as the target authoring model.
+  `Query`, `Projection`, and `Node` are described as implementation or legacy fixture vocabulary rather than PRD-003 author-facing concepts.
+  `examples/api_sketch_site/` is explicitly marked as a legacy PRD-001/PRD-002 fixture.
 
-Resume from Slice 10:
+All numbered slices now have at least a first implementation or cleanup pass.
+Remaining hardening work:
 
-- Perform PRD cleanup and migration.
-- Keep the scope entrypoints from `ac7b384`, the counter seeding from `f7b0255`, the reference adapter from `3be2f91`, the duplicate-bibliography diagnostics from `53b695e`, and the split HTML/PDF render-boundary generation from `c44ebbc`.
+- Replace proof-style placeholder lowerings with final bounded-selector or scoped-entrypoint generation where needed.
+- Add a CLI/API surface for selecting and compiling named-scope and scope-union entrypoints.
+- Expose computed counter context in inspect output.
 - When named-scope render targets are introduced later, finish the remaining bibliography refinement there: generate exactly one scoped bibliography input, possibly with a reduced temporary bibliography file, for the selected named-scope render boundary.
 
 == Implementation stance
