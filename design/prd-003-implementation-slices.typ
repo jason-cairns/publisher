@@ -23,7 +23,7 @@ If an implementation attempt fails, record the failure and corrected approach in
 
 == Implementation checkpoint
 
-Status after the PRD-003 implementation run that ended at commit `3be2f91`:
+Status after the PRD-003 implementation run that ended at commit `f7b0255`:
 
 - Slice 1 is complete and committed as `84df818 Add PRD-003 marker API`.
   Evidence: `cargo test --test api_sketch_parser` and `cargo run --example prd003_discovery`.
@@ -50,11 +50,16 @@ Status after the PRD-003 implementation run that ended at commit `3be2f91`:
   Source-local HTML generation now discovers labels across reachable source documents, preserves same-source references where the source-local compilation owns the target, and lowers cross-source references to explicit `#link(...)` expressions using the target route and titled target-scope context.
   The renderer does not hidden-include target sources for references, so local outlines and bibliography inputs are not polluted.
   Combined PDF proof inputs keep generated references as explicit text until a later combined-entrypoint reference policy is implemented.
+- Slice 8 has a first implementation committed as `f7b0255 Seed PRD-003 source HTML counters`.
+  Evidence: `cargo test --test render_assembly`, `cargo test`, `cargo run --example prd003_discovery`, and the focused `examples/prd003_counter_ref_site` counter/reference commands.
+  Source-local HTML generation now computes a heading counter seed for numbered multi-source publication scopes and injects `#counter(heading).update(n)` before a later source's content, so a second thesis source can render as chapter `2.` without hidden-including the first source.
+  Whole-publication PDF proof inputs remain unseeded, allowing Typst counters to continue naturally across the generated entrypoint.
+  This is a first render-generation implementation; inspect output does not yet expose the computed counter context.
 
-Resume from Slice 8:
+Resume from Slice 9:
 
-- Implement cross-source counters and heading numbering.
-- Keep the reference adapter from `3be2f91`, the duplicate-bibliography diagnostics from `53b695e`, and the split HTML/PDF render-boundary generation from `c44ebbc`.
+- Implement named scope and union render entrypoints.
+- Keep the counter seeding from `f7b0255`, the reference adapter from `3be2f91`, the duplicate-bibliography diagnostics from `53b695e`, and the split HTML/PDF render-boundary generation from `c44ebbc`.
 - When named-scope render targets are introduced later, finish the remaining bibliography refinement there: generate exactly one scoped bibliography input, possibly with a reduced temporary bibliography file, for the selected named-scope render boundary.
 
 == Implementation stance
