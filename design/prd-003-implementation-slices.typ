@@ -294,7 +294,59 @@ cargo run --example prd003_discovery
 
 Evidence must show a blog page can link to a thesis label in per-source HTML without hidden target inclusion and without polluting local outline or bibliography inputs.
 
-== Slice 9: Named scope and union render entrypoints
+== Slice 9: Cross-source counters and heading numbering
+
+Goal:
+Make counters behave correctly across published source documents for render targets that span multiple sources.
+
+Motivating example:
+
+```text
+thesis/ch-01.typ -> heading number 1.
+thesis/ch-02.typ -> heading number 2.
+```
+
+Implementation distinction:
+
+- For whole-publication, named-scope, and scope-union render targets, the publisher should generate one Typst entrypoint containing the ordered source/content region.
+  Typst can then run counters naturally across `#include`d or assembled source content.
+- For per-source HTML, each source is compiled independently to preserve one HTML file per source document.
+  Typst therefore cannot naturally know the prior source's counter state unless the publisher provides it.
+
+Owned files:
+
+- render/generation code
+- model/inspect code for render order and source scope order
+- focused tests
+
+Tasks:
+
+- Define which scopes reset heading counters.
+- Define how source-document boundaries affect heading counters.
+- Generate whole-scope and whole-publication entrypoints in publication graph order so Typst counters naturally produce `1.`, `2.`, etc. across source files.
+- For per-source HTML, decide and implement one of:
+  - source-local numbering resets per source document; or
+  - publisher-provided counter seed/state at the start of each source HTML compilation.
+- Prefer source-local resets only for implicit source scopes where that is the intended boundary.
+- For numbered multi-source scopes such as a thesis, provide counter seed/state so `ch-02.typ` can render as chapter `2.` even when compiled as its own HTML page.
+- Make the inspect output show computed counter context per source document for review.
+- Avoid hidden-including prior sources to advance counters, because that pollutes outlines, bibliography, and queries.
+
+Acceptance:
+
+```sh
+cargo test --test render_assembly
+cargo run --example prd003_discovery
+```
+
+Evidence must show:
+
+- a multi-source scope entrypoint renders ordered heading numbers across `ch-01.typ` and `ch-02.typ`;
+- per-source HTML for `ch-02.typ` can render with the correct continued heading number when the active scope requires cross-source numbering;
+- source-local scopes can still reset numbering when intended;
+- hidden inclusion is not used to seed counters.
+
+== Slice 10: Named scope and union render entrypoints
 
 Goal:
 Render selected scopes and explicit scope unions as generated Typst entrypoints.
@@ -328,7 +380,7 @@ Evidence must show:
 - `writing + thesis` union entrypoint;
 - per-source HTML route outputs.
 
-== Slice 10: PRD cleanup and migration
+== Slice 11: PRD cleanup and migration
 
 Goal:
 Remove stale language after PRD-003 behavior is proven.
