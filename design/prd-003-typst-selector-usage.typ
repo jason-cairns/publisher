@@ -65,7 +65,7 @@ It marks a publication region and provides context for Typst-native selection an
 Navigation, outlines, bibliographies, queries, counters, labels, and references should remain ordinary Typst behavior wherever possible.
 
 Any navigation helper introduced later should be explicitly a rendering helper, not a scope declaration or a hidden query system.
-For example, a future `#publisher.nav(target: heading.where(level: 1))` would be a convenience renderer inside a scope, while `#scope(kind: "nav")` would only mark the region.
+For example, a future `#publisher.nav(target: heading.where(level: 1))` would be a convenience renderer inside a scope, while `#scope("site-nav", tags: ("nav",))` would only mark a region with nav metadata.
 
 Discovery should focus on a small scope-boundary adapter for Typst selectors.
 The publisher may provide current-scope boundaries to Typst through labels, metadata, locations, selectors, context helpers, or another Typst-native mechanism, but selection should remain Typst-native.
@@ -140,7 +140,7 @@ This keeps the authoring signal minimal and intentional:
 #scope("thesis", title: [Thesis])
 ```
 
-The scope id/name identifies the region for publisher and helper behavior.
+The scope id identifies the region for publisher and helper behavior.
 The explicit title opts that region into display text such as `Thesis, Chapter 3` when referenced from outside the region.
 Scope ids should be globally unique machine identities.
 Scope titles are display text and do not need to be globally unique.
