@@ -235,6 +235,8 @@ It is not literal inclusion; use Typst `#include` when the target content should
 At its authored call site, `#publish(...)` contributes a publication edge and may render as a link, card, or entry for the target source document.
 It should inherit the active scope context from the source document where it is declared.
 Authors should not need to pass `scope:` to `#publish(...)` for the normal case.
+The published source document should inherit all active scopes from the declaration site, subject to same-id or same-name shadowing by scopes declared in the published source document or its descendants.
+Diagnostics should show the active scope stack for every published source document so authors can see why a document is inside or outside a scope.
 In the HTML edition, it establishes a routed HTML document for the target source document.
 In a combined PDF edition, the publisher may assemble published source documents in publication-graph order as an edition concern, independently of the visual content emitted at each `#publish(...)` call site.
 
