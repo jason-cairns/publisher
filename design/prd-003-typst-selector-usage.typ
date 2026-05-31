@@ -41,6 +41,11 @@ Nested scopes with the same id or name shadow inherited scopes with that same id
 When a helper needs a single implicit scope, `current scope` should resolve to the nearest active scope unless the helper asks for an explicit scope id or name.
 Ambiguity between unrelated active scopes is an error only when an API asks for a single implicit scope and no nearest or named rule resolves it.
 
+Every source Typst document should also have an implicit source scope.
+This is the local boundary for behavior such as a source-local bibliography, source-local outline, source-local labels, and scoped compilation of one source document.
+It should not be exposed as a core domain concept called `current-page`.
+Discovery should prefer source-document language such as `publisher.current-source()` or `publisher.source-scope()`.
+
 A scope may also be rendered as a standalone compilable unit when an edition needs it.
 That standalone rendering is a projection of the scoped region, not the definition of scope itself.
 Discovery should cover the transformations required for scoped compilation, including heading promotion, local outline behavior, bibliography behavior, counters, labels, and references.
