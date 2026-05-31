@@ -167,6 +167,50 @@ fn validation_reports_core_model_errors_and_parse_warnings() {
     );
 }
 
+#[test]
+fn prd003_scopes_overlap_and_warn_on_duplicate_display_titles() {
+    let publication = parse_publication("examples/prd003_discovery_site/index.typ").unwrap();
+    let report = publication.validate();
+
+    assert!(
+        report.errors.is_empty(),
+        "unexpected errors: {:#?}",
+        report.errors
+    );
+
+    assert_eq!(
+        publication
+            .spine_for(&NodeId::from("writing/blog-2"))
+            .unwrap()
+            .scopes,
+        vec![
+            ScopeId::from("global"),
+            ScopeId::from("home"),
+            ScopeId::from("writing"),
+            Publication::implicit_source_document_scope_id(&NodeId::from("writing/blog-2")),
+            ScopeId::from("duplicate-title-a"),
+        ]
+    );
+    assert_eq!(
+        publication
+            .spine_for(&NodeId::from("thesis/ch-1"))
+            .unwrap()
+            .scopes,
+        vec![
+            ScopeId::from("global"),
+            ScopeId::from("home"),
+            ScopeId::from("thesis"),
+            Publication::implicit_source_document_scope_id(&NodeId::from("thesis/ch-1")),
+            ScopeId::from("duplicate-title-b"),
+        ]
+    );
+    assert!(report.warnings.iter().any(|warning| {
+        warning.kind == ParseWarningKind::DuplicateScopeTitle
+            && warning.message
+                == "duplicate scope title \"Writing\" used by scope ids: writing, duplicate-title-a, duplicate-title-b"
+    }));
+}
+
 fn representative_publication() -> Publication {
     let mut root = Node::new("index", "index.typ");
     root.children = vec![NodeId::from("writing")];

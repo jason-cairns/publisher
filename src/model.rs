@@ -194,6 +194,10 @@ impl Publication {
         ScopeId::new(format!("current-page:{node_id}"))
     }
 
+    pub fn implicit_source_document_scope_id(node_id: &NodeId) -> ScopeId {
+        Self::implicit_current_page_scope_id(node_id)
+    }
+
     pub fn add_node(&mut self, node: Node) {
         let node_id = node.id.clone();
         self.nodes.push(node);
@@ -820,6 +824,20 @@ impl ParseWarning {
             message: format!("preserved raw Typst expression: {expression}"),
         }
     }
+
+    pub fn duplicate_scope_title(title: impl Into<String>, scope_ids: Vec<ScopeId>) -> Self {
+        let title = title.into();
+        let scope_ids = scope_ids
+            .iter()
+            .map(ScopeId::as_str)
+            .collect::<Vec<_>>()
+            .join(", ");
+        Self {
+            source_path: None,
+            kind: ParseWarningKind::DuplicateScopeTitle,
+            message: format!("duplicate scope title {title:?} used by scope ids: {scope_ids}"),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -827,4 +845,5 @@ pub enum ParseWarningKind {
     UnreachableTypFile,
     PreservedRawTypstExpression,
     UnsupportedPublisherCall,
+    DuplicateScopeTitle,
 }

@@ -70,6 +70,7 @@ pub fn validate_publication(publication: &Publication) -> ValidationReport {
     validate_duplicate_source_paths(publication, &mut report);
     validate_children(publication, &mut report);
     validate_scopes(publication, &mut report);
+    validate_duplicate_publication_scope_titles(publication, &mut report);
     validate_properties(publication, &mut report);
     validate_queries(publication, &mut report);
     validate_projections(publication, &mut report);
@@ -154,6 +155,34 @@ fn validate_scopes(publication: &Publication, report: &mut ValidationReport) {
                     });
                 }
             }
+        }
+    }
+}
+
+fn validate_duplicate_publication_scope_titles(
+    publication: &Publication,
+    report: &mut ValidationReport,
+) {
+    let mut titled_scopes: BTreeMap<&str, Vec<ScopeId>> = BTreeMap::new();
+
+    for scope in &publication.scopes {
+        if scope.implicit || scope.kind != ScopeKind::Publication {
+            continue;
+        }
+        let Some(title) = scope.name.as_deref() else {
+            continue;
+        };
+        titled_scopes
+            .entry(title)
+            .or_default()
+            .push(scope.id.clone());
+    }
+
+    for (title, scope_ids) in titled_scopes {
+        if scope_ids.len() > 1 {
+            report
+                .warnings
+                .push(ParseWarning::duplicate_scope_title(title, scope_ids));
         }
     }
 }

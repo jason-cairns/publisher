@@ -617,6 +617,7 @@ fn parse_warning_kind(kind: &ParseWarningKind) -> &'static str {
         ParseWarningKind::UnreachableTypFile => "unreachable-typ-file",
         ParseWarningKind::PreservedRawTypstExpression => "preserved-raw-typst-expression",
         ParseWarningKind::UnsupportedPublisherCall => "unsupported-publisher-call",
+        ParseWarningKind::DuplicateScopeTitle => "duplicate-scope-title",
     }
 }
 
