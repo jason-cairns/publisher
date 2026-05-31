@@ -34,3 +34,14 @@ Scopes should support Typst-native selection and rendering behavior within that 
 A scope may also be rendered as a standalone compilable unit when an edition needs it.
 That standalone rendering is a projection of the scoped region, not the definition of scope itself.
 Discovery should cover the transformations required for scoped compilation, including heading promotion, local outline behavior, bibliography behavior, counters, labels, and references.
+
+== Source document semantics
+
+`Node` should stop being core domain language for this milestone.
+The domain should prefer Typst-native language: a publication contains Typst content, scopes mark meaningful regions of that content, and editions render either the whole publication or selected scopes.
+
+The implementation may still track source Typst documents as provenance and routing units.
+Source documents are useful for diagnostics, imports, default route structure, and edition assembly, but they should not force users to think in a parallel publisher document tree.
+
+For the HTML edition, preserve the invariant that one HTML document corresponds to one source Typst document.
+Scoped rendering can be added as an optional projection or edition mode, but it should not erase the source-document-to-HTML-document mapping.
