@@ -185,6 +185,22 @@ For example, `#bibliography(...)`, `#outline(...)`, and `query(...)` should oper
 When an author wants behavior across a different region, such as a bibliography or outline across many scopes, named scope contexts should be the explicit escape hatch.
 Discovery should investigate the smallest Typst-native way to express that named context without introducing replacement publisher query/rendering APIs.
 
+Candidate escape hatch:
+
+```typ
+#context publisher.in-scope("writing", "thesis")[
+  #outline(target: heading.where(level: 1))
+  #bibliography("works.yml")
+]
+```
+
+`publisher.in-scope(...)` should be a context switch for ordinary Typst content, not a replacement query or projection API.
+With one scope name, the current rendered region becomes that named scope.
+With multiple scope names, the current rendered region becomes the union of those named scopes.
+Union ordering should follow publication graph order by default, not argument order.
+Overlapping regions should be de-duplicated by source/content identity.
+Missing scope names, duplicate scope ids, or ambiguous names should be diagnostics.
+
 == Source document semantics
 
 `Node` should stop being core domain language for this milestone.
