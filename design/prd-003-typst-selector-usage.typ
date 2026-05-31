@@ -99,7 +99,7 @@ Candidate shape:
 #scope("thesis", title: [Thesis], tags: ("nav", "bibliography"))
 ```
 
-In this shape, the scope id/name and metadata help authors and helpers identify regions, but outline, bibliography, navigation, references, counters, and labels remain Typst-native behavior inside the selected region.
+In this shape, the scope id and metadata help authors and helpers identify regions, but outline, bibliography, navigation, references, counters, and labels remain Typst-native behavior inside the selected region.
 
 == Reference semantics
 
@@ -188,8 +188,8 @@ The source declares publication structure and scope metadata; it should not cont
 Normal Typst functions should do the obvious thing in the current rendered region.
 For example, `#bibliography(...)`, `#outline(...)`, and `query(...)` should operate over the source document, scope, or whole-publication region that the publisher is currently rendering.
 
-When an author wants behavior across a different region, such as a bibliography or outline across many scopes, named scope contexts should be the explicit escape hatch.
-Discovery should investigate the smallest Typst-native way to express that named context without introducing replacement publisher query/rendering APIs.
+When an author wants behavior across a different region, such as a bibliography or outline across many scopes, explicit scope-id contexts should be the escape hatch.
+Discovery should investigate the smallest Typst-native way to express that context without introducing replacement publisher query/rendering APIs.
 
 Candidate escape hatch:
 
@@ -201,13 +201,13 @@ Candidate escape hatch:
 ```
 
 `publisher.in-scope(...)` should be a context switch for ordinary Typst content, not a replacement query or projection API.
-With one scope name, the current rendered region becomes that named scope.
-With multiple scope names, the current rendered region becomes the union of those named scopes.
-Each named scope context should include the source document where that scope is declared, plus all covered published source documents reachable below that declaration.
+With one scope id, the current rendered region becomes that scope.
+With multiple scope ids, the current rendered region becomes the union of those scopes.
+Each explicit scope-id context should include the source document where that scope is declared, plus all covered published source documents reachable below that declaration.
 Literal `#include` content belongs to the source document where it is included.
 Union ordering should follow publication graph order by default, not argument order.
 Overlapping regions should be de-duplicated by source/content identity.
-Missing scope names, duplicate scope ids, or ambiguous names should be diagnostics.
+Missing scope ids or duplicate scope ids should be diagnostics.
 
 == Source document semantics
 
@@ -260,8 +260,74 @@ Hello, welcome to my publication!
 #publish("thesis/intro.typ")
 #publish("cv.typ")
 
-#scope(kind: "nav")
+#scope("home", tags: ("nav",))
 ```
 
 In this shape, `index.typ`, `writing.typ`, `thesis/intro.typ`, and `cv.typ` remain separate source documents for HTML routing.
 Typst-native selection should still be used within the relevant publisher scope.
+
+== Remaining discovery defaults
+
+Tags are metadata for this milestone.
+They should support diagnostics, styling, future helpers, and author classification, but they should not drive rendered-region selection yet.
+`publisher.in-scope(...)` should select by globally unique scope id only.
+If tag-based selection becomes necessary, discovery should introduce a distinct API such as `publisher.in-tag("public")[...]` rather than overloading scope ids.
+
+Scope ids should be authored as strings.
+They should be globally unique within a publication and should be stable enough for CLI targeting, diagnostics, and generated artifacts.
+Discovery should prefer simple ids such as `writing` and `thesis` before introducing path-like ids, namespaces, or automatic derivation.
+Duplicate explicit scope ids are errors.
+Duplicate display titles are allowed.
+
+`#publish(...)` should support explicit source paths first.
+Glob publishing, such as `#publish("writing/*.typ")`, is useful but should be treated as a discovery question, not assumed as part of the first implementation.
+If glob publishing is added, expansion must be deterministic, diagnostics must show the expanded order, and authors must have a way to override ordering when lexical order is wrong.
+
+Default route and output paths for HTML should derive from source Typst paths.
+For example, `writing.typ` should map to `writing.html`, and `thesis/intro.typ` should map to `thesis/intro.html` unless an explicit route option is later added.
+Route overrides are not required for the first selector/scope discovery spike.
+
+Edition selection belongs to the CLI or runtime publisher invocation.
+The discovery spike should prove at least these targets:
+
+```sh
+publisher render --root index.typ --to html
+publisher render --root index.typ --to pdf
+publisher render --root index.typ --scope thesis --to pdf
+publisher inspect --root index.typ scopes
+```
+
+The exact CLI syntax may change, but the capabilities should remain:
+render the whole publication, render per-source HTML, render a named scope as a compilable unit, and inspect scope/source-document relationships.
+
+== Discovery acceptance criteria
+
+Use a small fixture that proves the new model without reintroducing the old entities:
+
+- `index.typ` publishes `writing.typ`, `thesis/intro.typ`, and `cv.typ`.
+- `writing.typ` declares `#scope("writing", title: [Writing])` and publishes at least two writing source documents.
+- `thesis/intro.typ` declares `#scope("thesis", title: [Thesis])` and publishes at least one thesis chapter.
+- A normal `#outline(target: heading.where(level: 1))` renders over the current rendered region.
+- A normal `#bibliography("works.yml")` renders over the current rendered region.
+- `publisher.in-scope("writing", "thesis")[...]` can render an outline or bibliography over the union in publication graph order.
+- A standard Typst reference from outside `thesis` to a globally unique thesis label can render with `Thesis` as scope display context.
+- The HTML edition emits one HTML document per published source Typst document.
+- The inspect output shows scope ids, explicit titles, tags, source-document inheritance, active scope stacks, publication graph order, routes, and diagnostics.
+
+== Migration stance
+
+The discovery spike should not preserve old user-facing concepts by default.
+`Query`, `Projection`, and `Node` should not appear as core domain language in new API documentation.
+`publisher.outline(...)`, `publisher.bibliography(...)`, and `publisher.ref(...)` should be removed from the target authoring model unless discovery proves a Typst-native approach cannot support the required behavior.
+`publisher.child(...)` should be treated as old vocabulary; the target publication-edge form is `#publish(...)`.
+
+Implementation may still use internal data structures for source documents, generated artifacts, or Typst API bridging.
+Those structures should be documented as implementation machinery, not user-facing publication concepts.
+
+== Discovery risks
+
+The main risk is whether Typst can be made to evaluate ordinary `outline`, `bibliography`, `query`, counters, labels, and references against a publisher-supplied rendered region without rebuilding a parallel query/projection engine.
+Discovery should test Typst labels, metadata, locations, selectors, context, and scoped compilation directly before committing to implementation architecture.
+
+If Typst cannot expose the needed boundary behavior, the fallback should still preserve the authoring model as much as possible:
+base Typst syntax, explicit `#scope(...)`, explicit `#publish(...)`, standard labels/references, and minimal publisher helpers only where Typst has no native hook.
