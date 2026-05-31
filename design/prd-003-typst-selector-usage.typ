@@ -115,12 +115,27 @@ Lookup and display are separate concerns:
 Inside the same meaningful scope, references should behave like normal local Typst references.
 Scope context should be added when the origin and target cross a meaningful named scope boundary, not merely because the target belongs to a named scope.
 
-A titled scope is a display context.
-Untitled scopes are operational regions only.
-Cross-boundary references should include the nearest active titled scope for the target that is not also active at the origin.
-If no such titled scope exists, standard Typst reference display should be preserved.
+A scope becomes a display context only when it has an explicit `title:` field.
+Do not derive scope display titles from source-document headings.
+Headings are document content; scope titles are publication metadata.
+If headings implicitly created display contexts, ordinary titled content would accidentally change cross-scope reference text.
 
-Do not add separate `reference-context`, `display`, or `reference-title` controls unless discovery proves that `title` alone is insufficient.
+Untitled scopes are operational regions only.
+They can still bound selection, counters, bibliography behavior, compilation projections, or diagnostics, but they should not contribute text to cross-scope references.
+
+Cross-boundary references should include the nearest active explicitly titled scope for the target that is not also active at the origin.
+If no such explicitly titled scope exists, standard Typst reference display should be preserved.
+
+This keeps the authoring signal minimal and intentional:
+
+```typ
+#scope("thesis", title: [Thesis])
+```
+
+The scope id/name identifies the region for publisher and helper behavior.
+The explicit title opts that region into display text such as `Thesis, Chapter 3` when referenced from outside the region.
+
+Do not add separate `reference-context`, `display`, or `reference-title` controls unless discovery proves that explicit `title:` alone is insufficient.
 
 == Source document semantics
 
