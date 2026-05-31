@@ -136,8 +136,28 @@ This keeps the authoring signal minimal and intentional:
 
 The scope id/name identifies the region for publisher and helper behavior.
 The explicit title opts that region into display text such as `Thesis, Chapter 3` when referenced from outside the region.
+Scope ids should be globally unique machine identities.
+Scope titles are display text and do not need to be globally unique.
+Duplicate titled scopes may be worth a diagnostic warning when they produce confusing reference text, but they should not be a model error.
 
 Do not add separate `reference-context`, `display`, or `reference-title` controls unless discovery proves that explicit `title:` alone is insufficient.
+
+== Bibliography semantics
+
+Authors should use standard Typst bibliography syntax.
+Do not introduce a replacement `publisher.bibliography(...)` API unless discovery proves it is necessary.
+
+The default bibliography boundary should be the current rendered publication region supplied by the publisher.
+Authors should not need to wrap every bibliography call in an explicit scoped block to get scoped behavior.
+
+Candidate authoring shape:
+
+```typ
+#bibliography("works.yml")
+```
+
+When the publisher renders a source document, scope, or edition, it should provide the appropriate region boundary so Typst bibliography behavior is limited to that rendered region.
+Discovery should investigate whether this can be achieved through scoped compilation, context, labels, metadata, selectors, or another Typst-native mechanism.
 
 == Source document semantics
 
