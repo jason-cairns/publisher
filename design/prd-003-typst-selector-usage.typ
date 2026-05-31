@@ -125,6 +125,8 @@ They can still bound selection, counters, bibliography behavior, compilation pro
 
 Cross-boundary references should include the nearest active explicitly titled scope for the target that is not also active at the origin.
 If no such explicitly titled scope exists, standard Typst reference display should be preserved.
+Use only that nearest titled target scope by default, not the full titled-scope path.
+For example, a blog post reference to a thesis chapter should prefer `Thesis, Chapter 3` over `Publication, Thesis, Chapter 3`.
 
 This keeps the authoring signal minimal and intentional:
 
