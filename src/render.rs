@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fmt::{self, Display, Write};
 use std::fs;
 use std::io;
@@ -16,6 +16,8 @@ use typst::utils::LazyHash;
 use typst::{Feature, Features, Library, LibraryExt, World};
 use typst_kit::fonts::FontSearcher;
 use typst_pdf::PdfOptions;
+use typst_syntax::ast;
+use typst_syntax::{SyntaxKind, SyntaxNode};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RenderOptions {
@@ -640,7 +642,7 @@ fn renderable_node_source(
     if !inherited_navigation.is_empty() {
         source = format!("{inherited_navigation}\n\n{source}");
     }
-    sanitize_reference_shorthand(&source)
+    adapt_reference_shorthand(publication, node, boundary, &source)
 }
 
 fn lower_bibliographies(
@@ -1019,7 +1021,20 @@ fn find_call_end(source: &str, open_paren: usize) -> Option<usize> {
     None
 }
 
-fn sanitize_reference_shorthand(source: &str) -> String {
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct LabelTarget {
+    node_id: NodeId,
+    route: String,
+    title: Option<String>,
+}
+
+fn adapt_reference_shorthand(
+    publication: &Publication,
+    node: &Node,
+    boundary: RenderBoundary,
+    source: &str,
+) -> String {
+    let labels = publication_label_targets(publication);
     let mut out = String::with_capacity(source.len());
     let mut index = 0;
     let mut in_string = false;
@@ -1054,7 +1069,13 @@ fn sanitize_reference_shorthand(source: &str) -> String {
         if ch == '@' {
             let label_start = index + ch.len_utf8();
             if let Some((label, end)) = take_label(&source[label_start..]) {
-                write!(out, "#raw(\"@{label} placeholder\")").unwrap();
+                if let Some(adapted) =
+                    reference_replacement(publication, node, boundary, label, &labels)
+                {
+                    out.push_str(&adapted);
+                } else {
+                    write!(out, "#raw(\"@{label} placeholder\")").unwrap();
+                }
                 index = label_start + end;
                 continue;
             }
@@ -1065,6 +1086,149 @@ fn sanitize_reference_shorthand(source: &str) -> String {
     }
 
     out
+}
+
+fn reference_replacement(
+    publication: &Publication,
+    origin: &Node,
+    boundary: RenderBoundary,
+    label: &str,
+    labels: &BTreeMap<String, LabelTarget>,
+) -> Option<String> {
+    let target = labels.get(label)?;
+
+    if boundary == RenderBoundary::HtmlSource && target.node_id == origin.id {
+        return Some(format!("@{label}"));
+    }
+
+    match boundary {
+        RenderBoundary::CombinedPdf => {
+            let display = reference_display(publication, origin, target, label);
+            Some(format!("#raw(\"{}\")", typst_string_text(&display)))
+        }
+        RenderBoundary::HtmlSource => {
+            let route = relative_route(&origin.html_route, &target.route);
+            let display = reference_display(publication, origin, target, label);
+            Some(format!(
+                "#link(\"{}#{}\")[#raw(\"{}\")]",
+                typst_string_text(&route),
+                typst_string_text(label),
+                typst_string_text(&display)
+            ))
+        }
+    }
+}
+
+fn publication_label_targets(publication: &Publication) -> BTreeMap<String, LabelTarget> {
+    let mut labels = BTreeMap::new();
+
+    for node in &publication.nodes {
+        let mut node_labels = Vec::new();
+        let syntax = typst_syntax::parse(&node.authored_source.typst);
+        collect_labels(&syntax, &mut node_labels);
+
+        for label in node_labels {
+            labels.entry(label).or_insert_with(|| LabelTarget {
+                node_id: node.id.clone(),
+                route: node.html_route.clone(),
+                title: title_for_node(publication, &node.id),
+            });
+        }
+    }
+
+    labels
+}
+
+fn collect_labels(node: &SyntaxNode, labels: &mut Vec<String>) {
+    if node.kind() == SyntaxKind::Label {
+        if let Some(label) = node.cast::<ast::Label>() {
+            labels.push(label.get().to_string());
+        }
+    }
+
+    for child in node.children() {
+        collect_labels(child, labels);
+    }
+}
+
+fn reference_display(
+    publication: &Publication,
+    origin: &Node,
+    target: &LabelTarget,
+    label: &str,
+) -> String {
+    let title = target.title.clone().unwrap_or_else(|| label.to_string());
+    if let Some(scope_title) = cross_scope_reference_title(publication, origin, target) {
+        if scope_title != title {
+            return format!("{title}, {scope_title}");
+        }
+    }
+    title
+}
+
+fn cross_scope_reference_title(
+    publication: &Publication,
+    origin: &Node,
+    target: &LabelTarget,
+) -> Option<String> {
+    let origin_spine = publication.spine_for(&origin.id).ok()?;
+    let target_spine = publication.spine_for(&target.node_id).ok()?;
+    let origin_scopes: BTreeSet<_> = origin_spine.scopes.into_iter().collect();
+
+    target_spine
+        .scopes
+        .iter()
+        .filter(|scope_id| !origin_scopes.contains(*scope_id))
+        .filter_map(|scope_id| publication.scope(scope_id))
+        .find(|scope| scope.kind == ScopeKind::Publication && scope.name.is_some())
+        .and_then(|scope| scope.name.clone())
+}
+
+fn relative_route(from_route: &str, to_route: &str) -> String {
+    let from_parent = Path::new(from_route)
+        .parent()
+        .map(route_components)
+        .unwrap_or_default();
+    let to_components = route_components(Path::new(to_route));
+
+    let mut common = 0usize;
+    while common < from_parent.len()
+        && common < to_components.len()
+        && from_parent[common] == to_components[common]
+    {
+        common += 1;
+    }
+
+    let mut relative = Vec::new();
+    for _ in common..from_parent.len() {
+        relative.push("..".to_string());
+    }
+    relative.extend(to_components[common..].iter().cloned());
+
+    if relative.is_empty() {
+        Path::new(to_route)
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or(to_route)
+            .to_string()
+    } else {
+        relative.join("/")
+    }
+}
+
+fn route_components(path: &Path) -> Vec<String> {
+    path.components()
+        .filter_map(|component| match component {
+            std::path::Component::Normal(value) => {
+                value.to_str().map(std::string::ToString::to_string)
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+fn typst_string_text(value: &str) -> String {
+    value.replace('\\', "\\\\").replace('"', "\\\"")
 }
 
 fn take_label(source: &str) -> Option<(&str, usize)> {

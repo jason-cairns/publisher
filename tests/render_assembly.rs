@@ -321,6 +321,85 @@ This chapter cites @article.
     assert!(pdf_source.contains("#include \"typst-pdf/thesis/ch-1.typ\""));
 }
 
+#[test]
+fn render_publication_adapts_cross_source_html_references_without_hidden_inclusion() {
+    let fixture = TestFixture::new("publisher-prd003-cross-source-ref");
+    fixture.write(
+        "publisher.typ",
+        include_str!("../examples/prd003_discovery_site/publisher.typ"),
+    );
+    fixture.write(
+        "index.typ",
+        r#"#import "publisher.typ": scope, publish
+= Home
+#publish("writing/blog-2.typ")
+#publish("thesis/ch-1.typ")
+#scope("home")
+"#,
+    );
+    fixture.write(
+        "writing/blog-2.typ",
+        r#"#import "../publisher.typ": scope
+#set heading(numbering: "1.")
+
+= Blog Two <blog-two>
+#scope("writing", title: [Writing])
+
+See @thesis-main from here.
+
+== Local Detail <local-detail>
+
+See @local-detail too.
+
+#outline(target: heading.where(level: 1))
+"#,
+    );
+    fixture.write(
+        "thesis/ch-1.typ",
+        r#"#import "../publisher.typ": scope
+#set heading(numbering: "1.")
+
+= Chapter One <thesis-main>
+#scope("thesis", title: [Thesis])
+
+Thesis material.
+"#,
+    );
+
+    let publication = parse_publication(fixture.path("index.typ")).unwrap();
+    let report = publication.validate();
+    assert!(
+        report.errors.is_empty(),
+        "expected valid fixture, got {:#?}",
+        report.errors
+    );
+
+    let output_dir = temp_render_dir("publisher-prd003-cross-source-ref-render");
+    let options = RenderOptions {
+        source_root: fixture.root.clone(),
+        output_dir: output_dir.clone(),
+        artifact_name: "prd003-cross-source-ref".to_string(),
+    };
+
+    render_publication(&publication, &options).unwrap();
+
+    let generated_blog = fs::read_to_string(output_dir.join("typst/writing/blog-2.typ")).unwrap();
+    assert!(
+        generated_blog
+            .contains("#link(\"../thesis/ch-1.html#thesis-main\")[#raw(\"Chapter One, Thesis\")]")
+    );
+    assert!(generated_blog.contains("@local-detail"));
+    assert!(!generated_blog.contains("@thesis-main"));
+    assert!(!generated_blog.contains("#include"));
+    assert!(generated_blog.contains("Scope-local outline"));
+    assert!(generated_blog.contains("- Blog Two"));
+    assert!(!generated_blog.contains("- Chapter One"));
+
+    let blog_html = fs::read_to_string(output_dir.join("writing/blog-2.html")).unwrap();
+    assert!(blog_html.contains("../thesis/ch-1.html#thesis-main"));
+    assert!(blog_html.contains("Chapter One, Thesis"));
+}
+
 fn temp_render_dir(prefix: &str) -> PathBuf {
     let unique = SystemTime::now()
         .duration_since(UNIX_EPOCH)
