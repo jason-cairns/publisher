@@ -15,12 +15,20 @@ pub(super) enum PublisherMarker {
     Child {
         path: String,
     },
+    Publish {
+        path: String,
+    },
     Children {
         pattern: String,
     },
     Scope {
         kind: String,
         name: Option<String>,
+    },
+    PublicationScope {
+        id: String,
+        title: Option<String>,
+        tags: Vec<String>,
     },
     Outline {
         depth: Option<i64>,
@@ -100,13 +108,26 @@ fn decode_marker(value: &Value) -> Result<PublisherMarker, MarkerDecodeError> {
         "child" => Ok(PublisherMarker::Child {
             path: required_string(dict, "path")?,
         }),
+        "publish" => Ok(PublisherMarker::Publish {
+            path: required_string(dict, "path")?,
+        }),
         "children" => Ok(PublisherMarker::Children {
             pattern: required_string(dict, "pattern")?,
         }),
-        "scope" => Ok(PublisherMarker::Scope {
-            kind: required_string(dict, "scope_kind")?,
-            name: optional_string(dict, "name")?,
-        }),
+        "scope" => {
+            if field(dict, "id").is_some() {
+                Ok(PublisherMarker::PublicationScope {
+                    id: required_string(dict, "id")?,
+                    title: optional_content_text(dict, "title")?,
+                    tags: string_array(dict, "tags")?,
+                })
+            } else {
+                Ok(PublisherMarker::Scope {
+                    kind: required_string(dict, "scope_kind")?,
+                    name: optional_string(dict, "name")?,
+                })
+            }
+        }
         "outline" => Ok(PublisherMarker::Outline {
             depth: optional_i64(dict, "depth")?,
             title: optional_content_text(dict, "title")?,
@@ -190,6 +211,26 @@ fn optional_content_text(dict: &Dict, key: &str) -> Result<Option<String>, Marke
 
 fn optional_raw_typst(dict: &Dict, key: &str) -> Result<Option<String>, MarkerDecodeError> {
     Ok(field(dict, key).map(|value| value.repr().to_string()))
+}
+
+fn string_array(dict: &Dict, key: &str) -> Result<Vec<String>, MarkerDecodeError> {
+    match field(dict, key) {
+        Some(Value::Array(values)) => values
+            .iter()
+            .map(|value| match value {
+                Value::Str(value) => Ok(value.to_string()),
+                other => Err(MarkerDecodeError::new(format!(
+                    "field {key:?} entries must be strings, got {}",
+                    other.ty().short_name()
+                ))),
+            })
+            .collect(),
+        Some(other) => Err(MarkerDecodeError::new(format!(
+            "field {key:?} must be an array, got {}",
+            other.ty().short_name()
+        ))),
+        None => Ok(Vec::new()),
+    }
 }
 
 fn required_label(dict: &Dict, key: &str) -> Result<String, MarkerDecodeError> {

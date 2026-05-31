@@ -228,10 +228,84 @@ fn parse_api_sketch_fixture_builds_expected_publication() {
     );
 }
 
+#[test]
+fn parse_prd003_fixture_decodes_publish_edges_and_scope_metadata() {
+    let publication = parse_publication("examples/prd003_discovery_site/index.typ").unwrap();
+
+    let source_paths: Vec<_> = publication
+        .nodes
+        .iter()
+        .map(|node| node.source_path.as_str())
+        .collect();
+    assert_eq!(
+        source_paths,
+        vec![
+            "index.typ",
+            "writing.typ",
+            "writing/blog-1.typ",
+            "writing/blog-2.typ",
+            "thesis/intro.typ",
+            "thesis/ch-1.typ",
+            "cv.typ",
+        ]
+    );
+    assert_children(&publication, "index", &["writing", "thesis/intro", "cv"]);
+    assert_children(
+        &publication,
+        "writing",
+        &["writing/blog-1", "writing/blog-2"],
+    );
+    assert_children(&publication, "thesis/intro", &["thesis/ch-1"]);
+    assert!(
+        publication.node(&NodeId::from("summary")).is_none(),
+        "literal includes must not become routed published sources"
+    );
+
+    assert_publication_scope(&publication, "home", "index", None, &["nav"]);
+    assert_publication_scope(
+        &publication,
+        "writing",
+        "writing",
+        Some("Writing"),
+        &["nav"],
+    );
+    assert_publication_scope(
+        &publication,
+        "thesis",
+        "thesis/intro",
+        Some("Thesis"),
+        &["nav", "bibliography"],
+    );
+    assert_publication_scope(&publication, "cv", "cv", Some("CV"), &[]);
+}
+
 fn assert_children(publication: &Publication, node_id: &str, expected: &[&str]) {
     let node = publication.node(&NodeId::from(node_id)).unwrap();
     let actual: Vec<_> = node.children.iter().map(NodeId::as_str).collect();
     assert_eq!(actual, expected, "children for {node_id}");
+}
+
+fn assert_publication_scope(
+    publication: &Publication,
+    scope_id: &str,
+    root_node: &str,
+    expected_title: Option<&str>,
+    expected_tags: &[&str],
+) {
+    let scope = publication.scope(&ScopeId::from(scope_id)).unwrap();
+    assert_eq!(scope.kind, ScopeKind::Publication);
+    assert_eq!(scope.root_node, NodeId::from(root_node));
+    assert_eq!(scope.name.as_deref(), expected_title);
+    let actual_tags = scope
+        .attributes
+        .iter()
+        .filter(|attribute| attribute.key == "tag")
+        .map(|attribute| match &attribute.value {
+            Value::String(value) => value.as_str(),
+            other => panic!("expected string tag value, got {other:?}"),
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(actual_tags, expected_tags, "tags for {scope_id}");
 }
 
 fn assert_scope(publication: &Publication, scope_id: &str, kind: ScopeKind, root_node: &str) {

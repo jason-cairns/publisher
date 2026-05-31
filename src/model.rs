@@ -519,6 +519,7 @@ impl Scope {
 pub enum ScopeKind {
     Global,
     CurrentPage,
+    Publication,
     Nav,
     Outline,
     Reference,

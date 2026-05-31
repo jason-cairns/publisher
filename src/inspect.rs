@@ -512,6 +512,7 @@ fn scope_kind(kind: &ScopeKind) -> String {
     match kind {
         ScopeKind::Global => "global".to_string(),
         ScopeKind::CurrentPage => "current-page".to_string(),
+        ScopeKind::Publication => "publication".to_string(),
         ScopeKind::Nav => "nav".to_string(),
         ScopeKind::Outline => "outline".to_string(),
         ScopeKind::Reference => "reference".to_string(),

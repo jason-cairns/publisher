@@ -31,12 +31,18 @@ fn record_decoded_marker(
         PublisherMarker::Child { path } => {
             parsed.child_paths.push(normalize_source_path(&path));
         }
+        PublisherMarker::Publish { path } => {
+            parsed.child_paths.push(normalize_source_path(&path));
+        }
         PublisherMarker::Children { pattern } => {
             let children = parser.expand_children_glob(&parsed.source_path, &pattern)?;
             parsed.child_paths.extend(children);
         }
         PublisherMarker::Scope { kind, name } => {
             projections::record_scope(parsed, &CallArgs::scope(kind, name));
+        }
+        PublisherMarker::PublicationScope { id, title, tags } => {
+            projections::record_publication_scope(parsed, id, title, tags);
         }
         PublisherMarker::Outline {
             depth,
