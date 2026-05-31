@@ -23,7 +23,7 @@ If an implementation attempt fails, record the failure and corrected approach in
 
 == Implementation checkpoint
 
-Status after the PRD-003 implementation run that ended at commit `c44ebbc`:
+Status after the PRD-003 implementation run that ended at commit `3be2f91`:
 
 - Slice 1 is complete and committed as `84df818 Add PRD-003 marker API`.
   Evidence: `cargo test --test api_sketch_parser` and `cargo run --example prd003_discovery`.
@@ -45,11 +45,16 @@ Status after the PRD-003 implementation run that ended at commit `c44ebbc`:
   Generated source now has separate render boundaries:
   source-local HTML inputs under `typst/` preserve the ordinary authored `#bibliography(...)` call, while combined PDF inputs under `typst-pdf/` lower bibliography calls to an explicit scoped bibliography placeholder so Typst does not see multiple ordinary bibliography calls in the combined proof artifact.
   This proves source-local bibliography generation and prevents combined-render multiplicity, but it is not yet the final reduced bibliography file generation for future named-scope render targets.
+- Slice 7 has a first implementation committed as `3be2f91 Adapt PRD-003 cross-source HTML refs`.
+  Evidence: `cargo test --test render_assembly`, `cargo test`, `cargo run --example prd003_discovery`, and the focused `examples/prd003_counter_ref_site` reference commands.
+  Source-local HTML generation now discovers labels across reachable source documents, preserves same-source references where the source-local compilation owns the target, and lowers cross-source references to explicit `#link(...)` expressions using the target route and titled target-scope context.
+  The renderer does not hidden-include target sources for references, so local outlines and bibliography inputs are not polluted.
+  Combined PDF proof inputs keep generated references as explicit text until a later combined-entrypoint reference policy is implemented.
 
-Resume from Slice 7:
+Resume from Slice 8:
 
-- Implement the cross-source HTML reference adapter.
-- Keep the duplicate-bibliography diagnostics from `53b695e` and the split HTML/PDF render-boundary generation from `c44ebbc`.
+- Implement cross-source counters and heading numbering.
+- Keep the reference adapter from `3be2f91`, the duplicate-bibliography diagnostics from `53b695e`, and the split HTML/PDF render-boundary generation from `c44ebbc`.
 - When named-scope render targets are introduced later, finish the remaining bibliography refinement there: generate exactly one scoped bibliography input, possibly with a reduced temporary bibliography file, for the selected named-scope render boundary.
 
 == Implementation stance
