@@ -159,6 +159,23 @@ Candidate authoring shape:
 When the publisher renders a source document, scope, or edition, it should provide the appropriate region boundary so Typst bibliography behavior is limited to that rendered region.
 Discovery should investigate whether this can be achieved through scoped compilation, context, labels, metadata, selectors, or another Typst-native mechanism.
 
+== Rendered-region defaults
+
+Standard Typst rendering and introspection functions should operate over the current rendered publication region by default.
+This applies to authored functions such as:
+
+```typ
+#outline(target: heading.where(level: 1))
+#bibliography("works.yml")
+#context query(figure.where(kind: image))
+```
+
+The publisher should not replace these with `publisher.outline(...)`, `publisher.bibliography(...)`, or `publisher.query(...)`.
+Instead, when the publisher renders a source document, scope, or edition, it should make that rendered region the Typst context those functions naturally see.
+
+Discovery should test whether the current scope declaration interface is sufficient for this.
+The open interface question is how a non-rendering `#scope(...)` declaration becomes a Typst-visible region boundary for ordinary Typst functions without requiring authors to wrap every rendering call.
+
 == Source document semantics
 
 `Node` should stop being core domain language for this milestone.
