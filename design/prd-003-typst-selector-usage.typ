@@ -34,6 +34,12 @@ Scopes should support Typst-native selection and rendering behavior within that 
 A scope declaration is authored in a source Typst document.
 By default, the scope is rooted at the declaring source document and covers that document plus all source documents reachable from it through the publisher's source-document graph.
 If a nested reachable source document declares a scope of the same kind, that nested scope shadows the inherited scope for that kind.
+Scopes may overlap.
+The model should not force a source document or content region into exactly one scope.
+
+Nested scopes with the same id or name shadow inherited scopes with that same id or name.
+When a helper needs a single implicit scope, `current scope` should resolve to the nearest active scope unless the helper asks for an explicit scope id or name.
+Ambiguity between unrelated active scopes is an error only when an API asks for a single implicit scope and no nearest or named rule resolves it.
 
 A scope may also be rendered as a standalone compilable unit when an edition needs it.
 That standalone rendering is a projection of the scoped region, not the definition of scope itself.
