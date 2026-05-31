@@ -71,6 +71,19 @@ or, if selector composition cannot express the boundary directly:
 
 The milestone should avoid introducing a replacement query API such as `publisher.query(scope: "current", select: "headings")`.
 
+Scope categories should not be closed publisher behavior categories.
+The old kinds such as `nav`, `outline`, `reference`, and `bibliography` should not drive hard-coded renderer behavior.
+They may survive as ordinary author metadata or tags that Typst-native helpers can inspect.
+
+Candidate shape:
+
+```typ
+#scope("writing", title: [Writing], tags: ("nav",))
+#scope("thesis", title: [Thesis], tags: ("nav", "bibliography"))
+```
+
+In this shape, the scope id/name and metadata help authors and helpers identify regions, but outline, bibliography, navigation, references, counters, and labels remain Typst-native behavior inside the selected region.
+
 == Source document semantics
 
 `Node` should stop being core domain language for this milestone.
