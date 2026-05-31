@@ -1,0 +1,22 @@
+web:
+  type: Web
+  title: Web Reference
+  author: Doe, Jane
+  date: 2024
+  url: https://example.com/web
+
+book:
+  type: Book
+  title: Thesis Source
+  author: Smith, Pat
+  date: 2020
+  publisher: Example Press
+
+article:
+  type: Article
+  title: Chapter Source
+  author: Roe, Sam
+  date: 2022
+  parent:
+    type: Periodical
+    title: Journal of Examples
