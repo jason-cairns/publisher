@@ -23,7 +23,7 @@ If an implementation attempt fails, record the failure and corrected approach in
 
 == Implementation checkpoint
 
-Status after the PRD-003 implementation run that ended at commit `f7b0255`:
+Status after the PRD-003 implementation run that ended at commit `ac7b384`:
 
 - Slice 1 is complete and committed as `84df818 Add PRD-003 marker API`.
   Evidence: `cargo test --test api_sketch_parser` and `cargo run --example prd003_discovery`.
@@ -55,11 +55,16 @@ Status after the PRD-003 implementation run that ended at commit `f7b0255`:
   Source-local HTML generation now computes a heading counter seed for numbered multi-source publication scopes and injects `#counter(heading).update(n)` before a later source's content, so a second thesis source can render as chapter `2.` without hidden-including the first source.
   Whole-publication PDF proof inputs remain unseeded, allowing Typst counters to continue naturally across the generated entrypoint.
   This is a first render-generation implementation; inspect output does not yet expose the computed counter context.
+- Slice 9 has a first implementation committed as `ac7b384 Generate PRD-003 scope entrypoints`.
+  Evidence: `cargo test --test render_assembly`, `cargo test`, and `cargo run --example prd003_discovery`.
+  Rendering now writes reviewable named-scope entrypoint files under `scopes/` and deterministic pairwise scope-union entrypoint files under `scope-unions/`, using generated PDF-boundary sources in publication graph order.
+  The `thesis` scope entrypoint includes only thesis sources, and the `writing+thesis` union entrypoint includes writing and thesis sources once each while excluding `cv`.
+  This is generation-only entrypoint support; no CLI/API surface for selecting and compiling these entrypoints has been added yet.
 
-Resume from Slice 9:
+Resume from Slice 10:
 
-- Implement named scope and union render entrypoints.
-- Keep the counter seeding from `f7b0255`, the reference adapter from `3be2f91`, the duplicate-bibliography diagnostics from `53b695e`, and the split HTML/PDF render-boundary generation from `c44ebbc`.
+- Perform PRD cleanup and migration.
+- Keep the scope entrypoints from `ac7b384`, the counter seeding from `f7b0255`, the reference adapter from `3be2f91`, the duplicate-bibliography diagnostics from `53b695e`, and the split HTML/PDF render-boundary generation from `c44ebbc`.
 - When named-scope render targets are introduced later, finish the remaining bibliography refinement there: generate exactly one scoped bibliography input, possibly with a reduced temporary bibliography file, for the selected named-scope render boundary.
 
 == Implementation stance
