@@ -36,6 +36,9 @@ By default, the scope is rooted at the declaring source document and covers that
 Publication scope declarations are source-document-level metadata.
 They apply to the declaring source document and its published descendants regardless of textual position in the source document.
 If authors need lexical sub-document regions later, that should be a separate wrapper-style feature, not the default publication scope behavior.
+For this milestone, prefer at most one explicit publication scope declaration per source document.
+Use scope metadata such as `tags:` for classification rather than declaring many independent scopes on the same source document.
+Multiple explicit scopes in one source document can be explored later if a concrete need appears.
 Scopes may overlap.
 The model should not force a source document or content region into exactly one scope.
 Nested scopes should overlap inherited scopes, not shadow or replace them.
