@@ -23,7 +23,7 @@ If an implementation attempt fails, record the failure and corrected approach in
 
 == Implementation checkpoint
 
-Status after the PRD-003 implementation run that ended at commit `53b695e`:
+Status after the PRD-003 implementation run that ended at commit `c44ebbc`:
 
 - Slice 1 is complete and committed as `84df818 Add PRD-003 marker API`.
   Evidence: `cargo test --test api_sketch_parser` and `cargo run --example prd003_discovery`.
@@ -40,12 +40,17 @@ Status after the PRD-003 implementation run that ended at commit `53b695e`:
 - Slice 6 diagnostics are committed as `53b695e Add PRD-003 bibliography diagnostics`.
   Evidence: `cargo test`, `cargo run --example prd003_discovery`, and the PRD-003 inspect snapshot.
   Ordinary `#bibliography(...)` calls are detected as `bibliography-source` properties, and duplicate bibliography calls are warned per active publication/source scope.
+- Slice 6 current-renderer generation support is committed as `c44ebbc Add PRD-003 bibliography render boundaries`.
+  Evidence: `cargo test --test render_assembly`, `cargo test`, and `cargo run --example prd003_discovery`.
+  Generated source now has separate render boundaries:
+  source-local HTML inputs under `typst/` preserve the ordinary authored `#bibliography(...)` call, while combined PDF inputs under `typst-pdf/` lower bibliography calls to an explicit scoped bibliography placeholder so Typst does not see multiple ordinary bibliography calls in the combined proof artifact.
+  This proves source-local bibliography generation and prevents combined-render multiplicity, but it is not yet the final reduced bibliography file generation for future named-scope render targets.
 
-Resume from the generation side of Slice 6:
+Resume from Slice 7:
 
-- Implement scoped bibliography generation so valid source or named-scope renders give Typst exactly one bibliography call for that rendered scope.
-- Keep the duplicate-bibliography diagnostics from `53b695e`.
-- After that, continue to Slice 7 for the cross-source HTML reference adapter.
+- Implement the cross-source HTML reference adapter.
+- Keep the duplicate-bibliography diagnostics from `53b695e` and the split HTML/PDF render-boundary generation from `c44ebbc`.
+- When named-scope render targets are introduced later, finish the remaining bibliography refinement there: generate exactly one scoped bibliography input, possibly with a reduced temporary bibliography file, for the selected named-scope render boundary.
 
 == Implementation stance
 
