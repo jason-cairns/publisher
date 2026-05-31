@@ -33,15 +33,15 @@ Scopes should support Typst-native selection and rendering behavior within that 
 
 A scope declaration is authored in a source Typst document.
 By default, the scope is rooted at the declaring source document and covers that document plus all source documents reachable from it through the publisher's source-document graph.
-If a nested reachable source document declares a scope of the same kind, that nested scope shadows the inherited scope for that kind.
 Publication scope declarations are source-document-level metadata.
 They apply to the declaring source document and its published descendants regardless of textual position in the source document.
 If authors need lexical sub-document regions later, that should be a separate wrapper-style feature, not the default publication scope behavior.
 Scopes may overlap.
 The model should not force a source document or content region into exactly one scope.
+Nested scopes should overlap inherited scopes, not shadow or replace them.
+Scope ids are globally unique machine identities, so same-id shadowing should not exist.
 
-Nested scopes with the same id or name shadow inherited scopes with that same id or name.
-When a helper needs a single implicit scope, `current scope` should resolve to the nearest active scope unless the helper asks for an explicit scope id or name.
+When a helper needs a single implicit scope, `current scope` should resolve to the nearest active scope unless the helper asks for an explicit scope id.
 Ambiguity between unrelated active scopes is an error only when an API asks for a single implicit scope and no nearest or named rule resolves it.
 
 Every source Typst document should also have an implicit source scope.
@@ -54,8 +54,8 @@ That standalone rendering is a projection of the scoped region, not the definiti
 Discovery should cover the transformations required for scoped compilation, including heading promotion, local outline behavior, bibliography behavior, counters, labels, and references.
 
 Discovery should make scope extent inspectable and diagnosable.
-Authors should be able to see exactly which source documents a scope covers, why a document is included or excluded, and where same-kind shadowing changes the active scope.
-Scope names should default from the declaring source document's first suitable heading, with an explicit name available as an override.
+Authors should be able to see exactly which source documents a scope covers, why a document is included or excluded, and which scopes are active for each published source document.
+Scope ids should be explicit and globally unique.
 
 `#scope(...)` should not render visible content by default.
 It marks a publication region and provides context for Typst-native selection and rendering behavior.
@@ -238,7 +238,8 @@ It is not literal inclusion; use Typst `#include` when the target content should
 At its authored call site, `#publish(...)` contributes a publication edge and may render as a link, card, or entry for the target source document.
 It should inherit the active scope context from the source document where it is declared.
 Authors should not need to pass `scope:` to `#publish(...)` for the normal case.
-The published source document should inherit all active scopes from the declaration site, subject to same-id or same-name shadowing by scopes declared in the published source document or its descendants.
+The published source document should inherit all active scopes from the declaration site.
+Scopes declared in the published source document or its descendants add overlapping active scopes; they do not replace inherited scopes.
 Diagnostics should show the active scope stack for every published source document so authors can see why a document is inside or outside a scope.
 In the HTML edition, it establishes a routed HTML document for the target source document.
 In a combined PDF edition, the publisher may assemble published source documents in publication-graph order as an edition concern, independently of the visual content emitted at each `#publish(...)` call site.
