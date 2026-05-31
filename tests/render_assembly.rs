@@ -400,6 +400,95 @@ Thesis material.
     assert!(blog_html.contains("Chapter One, Thesis"));
 }
 
+#[test]
+fn render_publication_seeds_heading_counter_for_numbered_multi_source_scope_html() {
+    let fixture = TestFixture::new("publisher-prd003-counter-seed");
+    fixture.write(
+        "publisher.typ",
+        include_str!("../examples/prd003_discovery_site/publisher.typ"),
+    );
+    fixture.write(
+        "index.typ",
+        r#"#import "publisher.typ": publish
+= Home
+#publish("thesis/ch-01.typ")
+#publish("writing/post.typ")
+"#,
+    );
+    fixture.write(
+        "thesis/ch-01.typ",
+        r#"#import "../publisher.typ": scope, publish
+#set heading(numbering: "1.")
+
+= First Chapter <ch-01>
+#scope("thesis", title: [Thesis])
+#publish("thesis/ch-02.typ")
+
+== First Section <ch-01-section>
+"#,
+    );
+    fixture.write(
+        "thesis/ch-02.typ",
+        r#"#import "../publisher.typ": scope
+#set heading(numbering: "1.")
+
+= Second Chapter <ch-02>
+
+== Second Section <ch-02-section>
+"#,
+    );
+    fixture.write(
+        "writing/post.typ",
+        r#"#import "../publisher.typ": scope
+#set heading(numbering: "1.")
+
+= Writing Post
+#scope("writing", title: [Writing])
+"#,
+    );
+
+    let publication = parse_publication(fixture.path("index.typ")).unwrap();
+    let report = publication.validate();
+    assert!(
+        report.errors.is_empty(),
+        "expected valid fixture, got {:#?}",
+        report.errors
+    );
+
+    let output_dir = temp_render_dir("publisher-prd003-counter-seed-render");
+    let options = RenderOptions {
+        source_root: fixture.root.clone(),
+        output_dir: output_dir.clone(),
+        artifact_name: "prd003-counter-seed".to_string(),
+    };
+
+    render_publication(&publication, &options).unwrap();
+
+    let generated_ch_01 = fs::read_to_string(output_dir.join("typst/thesis/ch-01.typ")).unwrap();
+    assert!(!generated_ch_01.contains("#counter(heading).update("));
+
+    let generated_ch_02 = fs::read_to_string(output_dir.join("typst/thesis/ch-02.typ")).unwrap();
+    assert!(generated_ch_02.contains("#counter(heading).update(1)"));
+    assert!(!generated_ch_02.contains("#include"));
+
+    let generated_post = fs::read_to_string(output_dir.join("typst/writing/post.typ")).unwrap();
+    assert!(!generated_post.contains("#counter(heading).update("));
+
+    let ch_02_html = fs::read_to_string(output_dir.join("thesis/ch-02.html")).unwrap();
+    assert!(ch_02_html.contains("2."));
+    assert!(ch_02_html.contains("Second Chapter"));
+    assert!(ch_02_html.contains("2.1."));
+    assert!(ch_02_html.contains("Second Section"));
+
+    let pdf_source = fs::read_to_string(output_dir.join("prd003-counter-seed.typ")).unwrap();
+    assert!(pdf_source.contains("#include \"typst-pdf/thesis/ch-01.typ\""));
+    assert!(pdf_source.contains("#include \"typst-pdf/thesis/ch-02.typ\""));
+
+    let generated_pdf_ch_02 =
+        fs::read_to_string(output_dir.join("typst-pdf/thesis/ch-02.typ")).unwrap();
+    assert!(!generated_pdf_ch_02.contains("#counter(heading).update("));
+}
+
 fn temp_render_dir(prefix: &str) -> PathBuf {
     let unique = SystemTime::now()
         .duration_since(UNIX_EPOCH)

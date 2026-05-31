@@ -638,11 +638,91 @@ fn renderable_node_source(
         replace_publisher_projection_calls(&node.authored_source.typst, &mut placeholders);
     source = lower_scope_local_outlines(publication, node, &source);
     source = lower_bibliographies(publication, node, boundary, &source);
+    source = seed_heading_counter(publication, node, boundary, &source);
     let inherited_navigation = placeholders.remaining_navigation_placeholders();
     if !inherited_navigation.is_empty() {
         source = format!("{inherited_navigation}\n\n{source}");
     }
     adapt_reference_shorthand(publication, node, boundary, &source)
+}
+
+fn seed_heading_counter(
+    publication: &Publication,
+    node: &Node,
+    boundary: RenderBoundary,
+    source: &str,
+) -> String {
+    if boundary != RenderBoundary::HtmlSource {
+        return source.to_string();
+    }
+
+    let Some(seed) = heading_counter_seed(publication, node) else {
+        return source.to_string();
+    };
+
+    format!("#counter(heading).update({seed})\n\n{source}")
+}
+
+fn heading_counter_seed(publication: &Publication, node: &Node) -> Option<usize> {
+    if !source_sets_heading_numbering(&node.authored_source.typst) {
+        return None;
+    }
+
+    let spine = publication.spine_for(&node.id).ok()?;
+    let scope = spine
+        .scopes
+        .iter()
+        .rev()
+        .filter_map(|scope_id| publication.scope(scope_id))
+        .find(|scope| {
+            scope.kind == ScopeKind::Publication
+                && numbered_scope_node_count(publication, scope) > 1
+        })?;
+
+    let seed = publication
+        .nodes
+        .iter()
+        .take_while(|candidate| candidate.id != node.id)
+        .filter(|candidate| scope.covers(publication, &candidate.id))
+        .filter(|candidate| source_sets_heading_numbering(&candidate.authored_source.typst))
+        .map(|candidate| top_level_heading_count(&candidate.authored_source.typst))
+        .sum();
+
+    (seed > 0).then_some(seed)
+}
+
+fn numbered_scope_node_count(publication: &Publication, scope: &Scope) -> usize {
+    publication
+        .nodes
+        .iter()
+        .filter(|node| scope.covers(publication, &node.id))
+        .filter(|node| source_sets_heading_numbering(&node.authored_source.typst))
+        .count()
+}
+
+fn source_sets_heading_numbering(source: &str) -> bool {
+    source.contains("#set heading(") && source.contains("numbering")
+}
+
+fn top_level_heading_count(source: &str) -> usize {
+    let syntax = typst_syntax::parse(source);
+    let mut count = 0;
+    count_top_level_headings(&syntax, &mut count);
+    count
+}
+
+fn count_top_level_headings(node: &SyntaxNode, count: &mut usize) {
+    if node.kind() == SyntaxKind::Heading {
+        if let Some(heading) = node.cast::<ast::Heading>() {
+            if heading.depth().get() == 1 {
+                *count += 1;
+            }
+        }
+    }
+
+    for child in node.children() {
+        count_top_level_headings(child, count);
+    }
 }
 
 fn lower_bibliographies(
