@@ -70,6 +70,11 @@ The authoring distinction should be:
 
 `#publish(path, ..options)` declares a routed source document in the publication graph.
 The graph can still be ordered and parented by declaration position, but the API should name the publishing outcome rather than asking authors to think in nodes.
+It is not literal inclusion; use Typst `#include` when the target content should be inserted at the call site.
+
+At its authored call site, `#publish(...)` contributes a publication edge and may render as a link, card, or entry for the target source document.
+In the HTML edition, it establishes a routed HTML document for the target source document.
+In a combined PDF edition, the publisher may assemble published source documents in publication-graph order as an edition concern, independently of the visual content emitted at each `#publish(...)` call site.
 
 Candidate authoring shape:
 
