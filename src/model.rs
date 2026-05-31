@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use std::fmt;
+use std::path::Path;
 
 use crate::validation::{ValidationError, ValidationReport};
 
@@ -388,6 +389,7 @@ impl Publication {
 pub struct Node {
     pub id: NodeId,
     pub source_path: String,
+    pub html_route: String,
     pub authored_source: AuthoredSource,
     pub parent: Option<NodeId>,
     pub children: Vec<NodeId>,
@@ -398,9 +400,11 @@ pub struct Node {
 
 impl Node {
     pub fn new(id: impl Into<NodeId>, source_path: impl Into<String>) -> Self {
+        let source_path = source_path.into();
         Self {
             id: id.into(),
-            source_path: source_path.into(),
+            html_route: default_html_route(&source_path),
+            source_path,
             authored_source: AuthoredSource::default(),
             parent: None,
             children: Vec::new(),
@@ -424,6 +428,13 @@ impl Node {
         self.authored_source = AuthoredSource::new(source);
         self
     }
+}
+
+fn default_html_route(source_path: &str) -> String {
+    Path::new(source_path)
+        .with_extension("html")
+        .to_string_lossy()
+        .replace('\\', "/")
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

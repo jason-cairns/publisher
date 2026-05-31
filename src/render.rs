@@ -208,8 +208,8 @@ fn render_html_pages(
     Ok(html_paths)
 }
 
-fn html_path_for_source(output_dir: &Path, source_path: &str) -> PathBuf {
-    output_dir.join(Path::new(source_path).with_extension("html"))
+fn html_path_for_route(output_dir: &Path, html_route: &str) -> PathBuf {
+    output_dir.join(html_route)
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -247,7 +247,7 @@ fn write_render_sources(
 
         render_sources.push(RenderSource {
             virtual_path,
-            html_path: html_path_for_source(&options.output_dir, &node.source_path),
+            html_path: html_path_for_route(&options.output_dir, &node.html_route),
         });
     }
 

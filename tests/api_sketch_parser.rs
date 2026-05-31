@@ -260,6 +260,23 @@ fn parse_prd003_fixture_decodes_publish_edges_and_scope_metadata() {
         publication.node(&NodeId::from("summary")).is_none(),
         "literal includes must not become routed published sources"
     );
+    let html_routes = publication
+        .nodes
+        .iter()
+        .map(|node| node.html_route.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        html_routes,
+        vec![
+            "index.html",
+            "writing.html",
+            "writing/blog-1.html",
+            "writing/blog-2.html",
+            "thesis/intro.html",
+            "thesis/ch-1.html",
+            "cv.html",
+        ]
+    );
 
     assert_publication_scope(&publication, "home", "index", None, &["nav"]);
     assert_publication_scope(
