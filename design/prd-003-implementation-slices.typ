@@ -21,6 +21,32 @@ Do not create new discovery-only slices for outline scope locality, bibliography
 Remaining work should be implementation work with focused verification.
 If an implementation attempt fails, record the failure and corrected approach in `docs/implementation-notes.typ`.
 
+== Implementation checkpoint
+
+Status after the PRD-003 implementation run that ended at commit `53b695e`:
+
+- Slice 1 is complete and committed as `84df818 Add PRD-003 marker API`.
+  Evidence: `cargo test --test api_sketch_parser` and `cargo run --example prd003_discovery`.
+- Slice 2 is complete and committed as `eab3f67 Add PRD-003 source routes`.
+  Evidence: `cargo test --test api_sketch_parser` and `cargo test --test model_validation`.
+- Slice 3 is complete and committed as `25ed4b9 Add PRD-003 scope validation`.
+  Evidence: `cargo test`, `cargo run --example prd003_discovery`, and the PRD-003 model validation assertions.
+- Slice 4 is complete and committed as `afca403 Add PRD-003 inspect snapshot`.
+  Evidence: `cargo test --test inspect_api_sketch`; the PRD-003 snapshot shows routes, publish order, scope extents, active scope stacks, duplicate-title diagnostics, and parse warnings.
+- Slice 5 has a first implementation committed as `43a3dbd Lower PRD-003 outlines by scope`.
+  Evidence: `cargo test --test render_assembly`, `cargo test`, and `cargo run --example prd003_discovery`.
+  Current implementation lowers ordinary `#outline(...)` in generated source to a scope-local rendered outline block using the nearest active publication scope.
+  This proves scope-local rendered behavior, but it is not yet the final bounded-selector implementation described as the ideal shape below.
+- Slice 6 diagnostics are committed as `53b695e Add PRD-003 bibliography diagnostics`.
+  Evidence: `cargo test`, `cargo run --example prd003_discovery`, and the PRD-003 inspect snapshot.
+  Ordinary `#bibliography(...)` calls are detected as `bibliography-source` properties, and duplicate bibliography calls are warned per active publication/source scope.
+
+Resume from the generation side of Slice 6:
+
+- Implement scoped bibliography generation so valid source or named-scope renders give Typst exactly one bibliography call for that rendered scope.
+- Keep the duplicate-bibliography diagnostics from `53b695e`.
+- After that, continue to Slice 7 for the cross-source HTML reference adapter.
+
 == Implementation stance
 
 Preserve the target authoring model:
