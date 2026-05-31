@@ -197,6 +197,8 @@ Candidate escape hatch:
 `publisher.in-scope(...)` should be a context switch for ordinary Typst content, not a replacement query or projection API.
 With one scope name, the current rendered region becomes that named scope.
 With multiple scope names, the current rendered region becomes the union of those named scopes.
+Each named scope context should include the source document where that scope is declared, plus all covered published source documents reachable below that declaration.
+Literal `#include` content belongs to the source document where it is included.
 Union ordering should follow publication graph order by default, not argument order.
 Overlapping regions should be de-duplicated by source/content identity.
 Missing scope names, duplicate scope ids, or ambiguous names should be diagnostics.
