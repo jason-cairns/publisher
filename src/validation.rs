@@ -71,6 +71,7 @@ pub fn validate_publication(publication: &Publication) -> ValidationReport {
     validate_children(publication, &mut report);
     validate_scopes(publication, &mut report);
     validate_duplicate_publication_scope_titles(publication, &mut report);
+    validate_duplicate_bibliographies(publication, &mut report);
     validate_properties(publication, &mut report);
     validate_queries(publication, &mut report);
     validate_projections(publication, &mut report);
@@ -184,6 +185,48 @@ fn validate_duplicate_publication_scope_titles(
                 .warnings
                 .push(ParseWarning::duplicate_scope_title(title, scope_ids));
         }
+    }
+}
+
+fn validate_duplicate_bibliographies(publication: &Publication, report: &mut ValidationReport) {
+    let mut calls_by_scope: BTreeMap<ScopeId, Vec<NodeId>> = BTreeMap::new();
+
+    for property in &publication.properties {
+        if property.key != "bibliography-source" {
+            continue;
+        }
+        let Ok(spine) = publication.spine_for(&property.owning_node) else {
+            continue;
+        };
+        for scope_id in spine.scopes {
+            let Some(scope) = publication.scope(&scope_id) else {
+                continue;
+            };
+            if matches!(scope.kind, ScopeKind::Publication | ScopeKind::CurrentPage) {
+                calls_by_scope
+                    .entry(scope_id)
+                    .or_default()
+                    .push(property.owning_node.clone());
+            }
+        }
+    }
+
+    for (scope_id, owners) in calls_by_scope {
+        if owners.len() <= 1 {
+            continue;
+        }
+        let sources = owners
+            .iter()
+            .map(|owner| {
+                publication
+                    .node(owner)
+                    .map(|node| node.source_path.clone())
+                    .unwrap_or_else(|| owner.to_string())
+            })
+            .collect();
+        report
+            .warnings
+            .push(ParseWarning::duplicate_bibliography(&scope_id, sources));
     }
 }
 

@@ -6,10 +6,10 @@ Publication
   root: index.typ
   nodes: 7
   scopes: 15
-  properties: 14
+  properties: 18
   queries: 0
   projections: 0
-  warnings: 2
+  warnings: 5
   validation-errors: 0
 
 Tree
@@ -70,6 +70,7 @@ Node writing/blog-1.typ
   properties:
     source-path = "writing/blog-1.typ" implicit(source path)
     title = "Blog One" implicit(source-heading level=1)
+    bibliography-source = "../works.yml" explicit(raw #bibliography(...))
   scopes declared:
     journal kind=publication name=Journal root=writing/blog-1.typ extent=descendants explicit order=0
   spine:
@@ -90,6 +91,7 @@ Node writing/blog-2.typ
   properties:
     source-path = "writing/blog-2.typ" implicit(source path)
     title = "Blog Two" implicit(source-heading level=1)
+    bibliography-source = "../works.yml" explicit(raw #bibliography(...))
   scopes declared:
     duplicate-title-a kind=publication name=Writing root=writing/blog-2.typ extent=descendants explicit order=0
   spine:
@@ -110,6 +112,7 @@ Node thesis/intro.typ
   properties:
     source-path = "thesis/intro.typ" implicit(source path)
     title = "Thesis Introduction" implicit(source-heading level=1)
+    bibliography-source = "../works.yml" explicit(raw #bibliography(...))
   scopes declared:
     thesis kind=publication name=Thesis root=thesis/intro.typ extent=descendants explicit order=0
   spine:
@@ -129,6 +132,7 @@ Node thesis/ch-1.typ
   properties:
     source-path = "thesis/ch-1.typ" implicit(source path)
     title = "Chapter One" implicit(source-heading level=1)
+    bibliography-source = "../works.yml" explicit(raw #bibliography(...))
   scopes declared:
     duplicate-title-b kind=publication name=Writing root=thesis/ch-1.typ extent=descendants explicit order=0
   spine:
@@ -192,12 +196,16 @@ Properties
   writing.typ owns title = "Writing Landing" implicit(source-heading level=1)
   writing/blog-1.typ owns source-path = "writing/blog-1.typ" implicit(source path)
   writing/blog-1.typ owns title = "Blog One" implicit(source-heading level=1)
+  writing/blog-1.typ owns bibliography-source = "../works.yml" explicit(raw #bibliography(...))
   writing/blog-2.typ owns source-path = "writing/blog-2.typ" implicit(source path)
   writing/blog-2.typ owns title = "Blog Two" implicit(source-heading level=1)
+  writing/blog-2.typ owns bibliography-source = "../works.yml" explicit(raw #bibliography(...))
   thesis/intro.typ owns source-path = "thesis/intro.typ" implicit(source path)
   thesis/intro.typ owns title = "Thesis Introduction" implicit(source-heading level=1)
+  thesis/intro.typ owns bibliography-source = "../works.yml" explicit(raw #bibliography(...))
   thesis/ch-1.typ owns source-path = "thesis/ch-1.typ" implicit(source path)
   thesis/ch-1.typ owns title = "Chapter One" implicit(source-heading level=1)
+  thesis/ch-1.typ owns bibliography-source = "../works.yml" explicit(raw #bibliography(...))
   cv.typ owns source-path = "cv.typ" implicit(source path)
   cv.typ owns title = "CV" implicit(source-heading level=1)
 
@@ -206,6 +214,9 @@ Projections and Queries
 Parse Warnings
   unsupported-publisher-call writing.typ: unsupported publisher marker preserved for review: unknown marker kind "in-scope"
   duplicate-scope-title: duplicate scope title "Writing" used by scope ids: writing, duplicate-title-a, duplicate-title-b
+  duplicate-bibliography: duplicate bibliography calls in scope home: writing/blog-1.typ, writing/blog-2.typ, thesis/intro.typ, thesis/ch-1.typ
+  duplicate-bibliography: duplicate bibliography calls in scope thesis: thesis/intro.typ, thesis/ch-1.typ
+  duplicate-bibliography: duplicate bibliography calls in scope writing: writing/blog-1.typ, writing/blog-2.typ
 
 Validation Result
   ok

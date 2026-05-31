@@ -838,6 +838,17 @@ impl ParseWarning {
             message: format!("duplicate scope title {title:?} used by scope ids: {scope_ids}"),
         }
     }
+
+    pub fn duplicate_bibliography(scope_id: &ScopeId, sources: Vec<String>) -> Self {
+        Self {
+            source_path: None,
+            kind: ParseWarningKind::DuplicateBibliography,
+            message: format!(
+                "duplicate bibliography calls in scope {scope_id}: {}",
+                sources.join(", ")
+            ),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -846,4 +857,5 @@ pub enum ParseWarningKind {
     PreservedRawTypstExpression,
     UnsupportedPublisherCall,
     DuplicateScopeTitle,
+    DuplicateBibliography,
 }

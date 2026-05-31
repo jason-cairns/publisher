@@ -209,6 +209,16 @@ fn prd003_scopes_overlap_and_warn_on_duplicate_display_titles() {
             && warning.message
                 == "duplicate scope title \"Writing\" used by scope ids: writing, duplicate-title-a, duplicate-title-b"
     }));
+    assert!(report.warnings.iter().any(|warning| {
+        warning.kind == ParseWarningKind::DuplicateBibliography
+            && warning.message
+                == "duplicate bibliography calls in scope writing: writing/blog-1.typ, writing/blog-2.typ"
+    }));
+    assert!(report.warnings.iter().any(|warning| {
+        warning.kind == ParseWarningKind::DuplicateBibliography
+            && warning.message
+                == "duplicate bibliography calls in scope thesis: thesis/intro.typ, thesis/ch-1.typ"
+    }));
 }
 
 fn representative_publication() -> Publication {

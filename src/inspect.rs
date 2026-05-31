@@ -619,6 +619,7 @@ fn parse_warning_kind(kind: &ParseWarningKind) -> &'static str {
         ParseWarningKind::PreservedRawTypstExpression => "preserved-raw-typst-expression",
         ParseWarningKind::UnsupportedPublisherCall => "unsupported-publisher-call",
         ParseWarningKind::DuplicateScopeTitle => "duplicate-scope-title",
+        ParseWarningKind::DuplicateBibliography => "duplicate-bibliography",
     }
 }
 

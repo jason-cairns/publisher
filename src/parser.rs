@@ -232,6 +232,11 @@ impl PublicationParser {
                     parsed.record_citation(reference.target());
                 }
             }
+            SyntaxKind::FuncCall => {
+                if let Some(call) = node.cast::<ast::FuncCall>() {
+                    parsed.record_ordinary_bibliography(call);
+                }
+            }
             _ => {}
         }
 
@@ -418,6 +423,35 @@ impl ParsedFile {
             Value::TypstLabel(target.to_string()),
             PropertySource::RawTypst {
                 expression: format!("@{target}"),
+            },
+        ));
+    }
+
+    fn record_ordinary_bibliography(&mut self, call: ast::FuncCall<'_>) {
+        let ast::Expr::Ident(callee) = call.callee() else {
+            return;
+        };
+        if callee.as_str() != "bibliography" {
+            return;
+        }
+
+        let source = call
+            .args()
+            .items()
+            .find_map(|arg| match arg {
+                ast::Arg::Pos(ast::Expr::Str(source)) => Some(source.get().to_string()),
+                _ => None,
+            })
+            .unwrap_or_else(|| "<unknown>".to_string());
+
+        let id = self.next_property_id("bibliography-source");
+        self.properties.push(Property::new(
+            id,
+            self.node_id.clone(),
+            "bibliography-source",
+            Value::String(source),
+            PropertySource::RawTypst {
+                expression: "#bibliography(...)".to_string(),
             },
         ));
     }
