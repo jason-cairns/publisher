@@ -53,3 +53,33 @@ Source documents are useful for diagnostics, imports, default route structure, a
 
 For the HTML edition, preserve the invariant that one HTML document corresponds to one source Typst document.
 Scoped rendering can be added as an optional projection or edition mode, but it should not erase the source-document-to-HTML-document mapping.
+
+== Publication graph authoring
+
+Standard Typst `#include` should remain available for literal inclusion.
+The publisher should not reinterpret every include as a routed publication edge, because authors may reasonably want to inline Typst content without creating a separate HTML document or source-document boundary.
+
+Publication graph edges therefore need an explicit publisher form, such as `#publish(...)` or `#child(...)`.
+The authoring distinction should be:
+
+- `#include "summary.typ"` means literal Typst inclusion in the current source document.
+- `#publish("writing.typ")` or `#child("writing.typ")` means include another source Typst document in the publication graph and render it as its own HTML document in the HTML edition.
+
+Candidate authoring shape:
+
+```typ
+#import "/publisher.typ": scope, publish
+
+= My Publication
+
+Hello, welcome to my publication!
+
+#publish("writing.typ")
+#publish("thesis/intro.typ")
+#publish("cv.typ")
+
+#scope(kind: "nav")
+```
+
+In this shape, `index.typ`, `writing.typ`, `thesis/intro.typ`, and `cv.typ` remain separate source documents for HTML routing.
+Typst-native selection should still be used within the relevant publisher scope.
