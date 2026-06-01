@@ -190,6 +190,63 @@ fn marker_evaluation_accepts_real_svg_assets() {
 }
 
 #[test]
+fn whole_publication_pdf_uses_root_stem_as_artifact_name() {
+    let temp = temp_dir("publisher-pdf-root-stem-cli");
+    let data_dir = temp.join("data");
+    let site_dir = temp.join("site");
+    let out_dir = temp.join("out");
+    fs::create_dir_all(&site_dir).unwrap();
+    install_typst_package(&data_dir);
+
+    fs::write(
+        site_dir.join("index.typ"),
+        r#"#import "@local/publisher:0.1.0": scope
+
+= Index
+
+#scope("index")
+"#,
+    )
+    .unwrap();
+    fs::write(
+        site_dir.join("cv.typ"),
+        r#"#import "@local/publisher:0.1.0": scope
+
+= CV
+
+#scope("cv")
+"#,
+    )
+    .unwrap();
+
+    for root in ["index.typ", "cv.typ"] {
+        let render = Command::new(env!("CARGO_BIN_EXE_publisher"))
+            .arg("render")
+            .arg("--root")
+            .arg(site_dir.join(root))
+            .arg("--to")
+            .arg("pdf")
+            .arg("--out")
+            .arg(&out_dir)
+            .env("PUBLISHER_TYPST_DATA_DIR", &data_dir)
+            .output()
+            .unwrap();
+        assert!(
+            render.status.success(),
+            "render failed for {root}:\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&render.stdout),
+            String::from_utf8_lossy(&render.stderr)
+        );
+    }
+
+    assert!(out_dir.join("index.pdf").is_file());
+    assert!(out_dir.join("index.typ").is_file());
+    assert!(out_dir.join("cv.pdf").is_file());
+    assert!(out_dir.join("cv.typ").is_file());
+    assert!(!out_dir.join("publication.pdf").exists());
+}
+
+#[test]
 fn validation_errors_block_rendering() {
     let mut publication = Publication::new(Node::new("index", "index.typ"));
     publication.add_node(Node::new("dup", "index.typ")); // duplicate source path

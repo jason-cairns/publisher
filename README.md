@@ -114,7 +114,9 @@ publisher inspect --root index.typ scopes
 ```
 
 Without `--scope`, an HTML render produces every page and a PDF render covers
-the whole publication. With `--scope <id>`, only that region is rendered.
+the whole publication. Whole-publication PDF artifacts use the root file stem
+(`index.typ` writes `build/index.pdf`). With `--scope <id>`, only that region is
+rendered, and PDF artifacts use the scope id.
 
 ## How rendering works
 

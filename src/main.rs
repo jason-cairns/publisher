@@ -103,10 +103,7 @@ fn render(
         Some(id) => RenderTarget::NamedScope(ScopeId::new(id)),
         None => RenderTarget::WholePublication,
     };
-    let artifact_name = match &target {
-        RenderTarget::NamedScope(id) => id.as_str().to_string(),
-        _ => "publication".to_string(),
-    };
+    let artifact_name = artifact_name_for(&root, &target)?;
 
     let options = RenderOptions {
         source_root,
@@ -150,4 +147,30 @@ fn source_root_for(root: &Path) -> PathBuf {
         Some(parent) => parent.to_path_buf(),
         None => PathBuf::from("."),
     }
+}
+
+fn artifact_name_for(root: &Path, target: &RenderTarget) -> Result<String, String> {
+    match target {
+        RenderTarget::NamedScope(id) => Ok(id.as_str().to_string()),
+        RenderTarget::WholePublication => root_file_stem(root),
+        RenderTarget::ScopeUnion(ids) => Ok(ids
+            .iter()
+            .map(|id| id.as_str())
+            .collect::<Vec<_>>()
+            .join("+")),
+    }
+}
+
+fn root_file_stem(root: &Path) -> Result<String, String> {
+    let stem = root
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .ok_or_else(|| format!("root path has no valid file stem: {}", root.display()))?;
+    if stem.is_empty() {
+        return Err(format!(
+            "root path has an empty file stem: {}",
+            root.display()
+        ));
+    }
+    Ok(stem.to_string())
 }
