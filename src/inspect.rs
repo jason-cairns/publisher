@@ -39,7 +39,6 @@ pub fn inspect_publication(
     write_scopes(&mut out, publication);
     write_spines(&mut out, publication);
     write_properties(&mut out, publication);
-    write_projections(&mut out, publication, options);
     write_parse_warnings(&mut out, report);
     write_validation_result(&mut out, report);
 
@@ -57,8 +56,6 @@ fn write_summary(out: &mut String, publication: &Publication, report: &Validatio
     writeln!(out, "  nodes: {}", publication.nodes.len()).unwrap();
     writeln!(out, "  scopes: {}", publication.scopes.len()).unwrap();
     writeln!(out, "  properties: {}", publication.properties.len()).unwrap();
-    writeln!(out, "  queries: {}", publication.queries.len()).unwrap();
-    writeln!(out, "  projections: {}", publication.projections.len()).unwrap();
     writeln!(out, "  warnings: {}", report.warnings.len()).unwrap();
     writeln!(out, "  validation-errors: {}", report.errors.len()).unwrap();
 }
@@ -104,7 +101,6 @@ fn write_node_details(out: &mut String, publication: &Publication, options: &Ins
         write_node_properties(out, publication, node);
         write_node_scopes(out, publication, node);
         write_node_spine(out, publication, &node.id);
-        write_node_projections(out, publication, node, options);
     }
 }
 
@@ -159,27 +155,6 @@ fn write_node_spine(out: &mut String, publication: &Publication, node_id: &NodeI
     }
 }
 
-fn write_node_projections(
-    out: &mut String,
-    publication: &Publication,
-    node: &Node,
-    options: &InspectOptions,
-) {
-    writeln!(out, "  projections:").unwrap();
-    if node.projections.is_empty() {
-        writeln!(out, "    <none>").unwrap();
-    } else {
-        for projection_id in &node.projections {
-            match publication.projection(projection_id) {
-                Some(projection) => {
-                    write_projection(out, publication, projection, 2, options);
-                }
-                None => writeln!(out, "    <missing projection {projection_id}>").unwrap(),
-            }
-        }
-    }
-}
-
 fn write_scopes(out: &mut String, publication: &Publication) {
     writeln!(out).unwrap();
     writeln!(out, "Scopes").unwrap();
@@ -224,148 +199,6 @@ fn write_properties(out: &mut String, publication: &Publication) {
             "  {} owns {}",
             source_path(publication, &property.owning_node),
             format_property(property)
-        )
-        .unwrap();
-    }
-}
-
-fn write_projections(out: &mut String, publication: &Publication, options: &InspectOptions) {
-    writeln!(out).unwrap();
-    writeln!(out, "Projections and Queries").unwrap();
-    for projection in &publication.projections {
-        write_projection(out, publication, projection, 1, options);
-    }
-}
-
-fn write_projection(
-    out: &mut String,
-    publication: &Publication,
-    projection: &Projection,
-    depth: usize,
-    options: &InspectOptions,
-) {
-    let indent = "  ".repeat(depth);
-    writeln!(
-        out,
-        "{indent}{} {} origin={}{}",
-        projection.id,
-        projection_kind(&projection.kind),
-        source_path(publication, &projection.origin_node),
-        format_projection_suppression(&projection.suppression)
-    )
-    .unwrap();
-    if projection.rendering_attributes.is_empty() {
-        writeln!(out, "{indent}  rendering: <none>").unwrap();
-    } else {
-        writeln!(
-            out,
-            "{indent}  rendering: {}",
-            format_attributes(&projection.rendering_attributes)
-        )
-        .unwrap();
-    }
-
-    match publication.query(&projection.query) {
-        Some(query) => write_query(out, query, depth + 1, options),
-        None => writeln!(out, "{indent}  query: <missing {}>", projection.query).unwrap(),
-    }
-}
-
-fn write_query(out: &mut String, query: &Query, depth: usize, options: &InspectOptions) {
-    let indent = "  ".repeat(depth);
-    writeln!(
-        out,
-        "{indent}query {} origin={}",
-        query.id, query.origin_node
-    )
-    .unwrap();
-    write_sourced_value(
-        out,
-        depth + 1,
-        "selection",
-        &query.selection,
-        query_selection,
-        options,
-    );
-    write_sourced_value(
-        out,
-        depth + 1,
-        "search",
-        &query.search,
-        query_search,
-        options,
-    );
-    if query.filters.is_empty() {
-        writeln!(out, "{indent}  filters: <none>").unwrap();
-    } else {
-        for filter in &query.filters {
-            writeln!(
-                out,
-                "{indent}  filter: {} {} {} {}",
-                filter.target,
-                filter_op(&filter.op),
-                format_value(&filter.value),
-                value_source(filter.source.clone())
-            )
-            .unwrap();
-        }
-    }
-    write_sourced_value(
-        out,
-        depth + 1,
-        "ordering",
-        &query.ordering,
-        query_ordering,
-        options,
-    );
-    write_sourced_value(
-        out,
-        depth + 1,
-        "visibility",
-        &query.visibility,
-        query_visibility,
-        options,
-    );
-    write_sourced_value(
-        out,
-        depth + 1,
-        "fallback",
-        &query.fallback,
-        query_fallback,
-        options,
-    );
-    write_sourced_value(
-        out,
-        depth + 1,
-        "ambiguity",
-        &query.ambiguity,
-        query_ambiguity,
-        options,
-    );
-    if !options.debug_defaults {
-        writeln!(
-            out,
-            "{indent}  defaulted-values: hidden (use --debug-defaults)"
-        )
-        .unwrap();
-    }
-}
-
-fn write_sourced_value<T>(
-    out: &mut String,
-    depth: usize,
-    label: &str,
-    sourced_value: &SourcedValue<T>,
-    format: fn(&T) -> String,
-    options: &InspectOptions,
-) {
-    if sourced_value.is_explicit() || options.debug_defaults {
-        let indent = "  ".repeat(depth);
-        writeln!(
-            out,
-            "{indent}{label}: {} {}",
-            format(&sourced_value.value),
-            value_source(sourced_value.source.clone())
         )
         .unwrap();
     }
@@ -466,15 +299,6 @@ fn format_property(property: &Property) -> String {
     )
 }
 
-fn format_projection_suppression(suppression: &ProjectionSuppression) -> String {
-    match suppression {
-        ProjectionSuppression::NotSuppressed => String::new(),
-        ProjectionSuppression::Suppressed { reason } => {
-            format!(" suppressed=true reason={reason}")
-        }
-    }
-}
-
 fn format_attributes(attributes: &[Attribute]) -> String {
     attributes
         .iter()
@@ -493,13 +317,6 @@ fn format_value(value: &Value) -> String {
     }
 }
 
-fn value_source(source: ValueSource) -> &'static str {
-    match source {
-        ValueSource::Explicit => "explicit",
-        ValueSource::Defaulted => "defaulted",
-    }
-}
-
 fn property_source(source: &PropertySource) -> String {
     match source {
         PropertySource::Implicit { reason } => format!("implicit({reason})"),
@@ -514,11 +331,6 @@ fn scope_kind(kind: &ScopeKind) -> String {
         ScopeKind::Global => "global".to_string(),
         ScopeKind::CurrentPage => "current-page".to_string(),
         ScopeKind::Publication => "publication".to_string(),
-        ScopeKind::Nav => "nav".to_string(),
-        ScopeKind::Outline => "outline".to_string(),
-        ScopeKind::Reference => "reference".to_string(),
-        ScopeKind::Bibliography => "bibliography".to_string(),
-        ScopeKind::Other(kind) => kind.clone(),
     }
 }
 
@@ -534,82 +346,6 @@ fn scope_extent(extent: &ScopeExtent) -> String {
                 .collect::<Vec<_>>()
                 .join(", ")
         ),
-    }
-}
-
-fn projection_kind(kind: &ProjectionKind) -> String {
-    match kind {
-        ProjectionKind::Outline => "outline".to_string(),
-        ProjectionKind::Navigation => "navigation".to_string(),
-        ProjectionKind::Bibliography => "bibliography".to_string(),
-        ProjectionKind::Reference => "reference".to_string(),
-        ProjectionKind::Other(kind) => kind.clone(),
-    }
-}
-
-fn query_selection(selection: &QuerySelection) -> String {
-    match selection {
-        QuerySelection::Nodes => "nodes".to_string(),
-        QuerySelection::Scopes => "scopes".to_string(),
-        QuerySelection::Properties => "properties".to_string(),
-        QuerySelection::ResolvedTarget => "resolved-target".to_string(),
-    }
-}
-
-fn query_search(search: &QuerySearchRule) -> String {
-    match search {
-        QuerySearchRule::CurrentNode => "current-node".to_string(),
-        QuerySearchRule::CurrentScope => "current-scope".to_string(),
-        QuerySearchRule::NearestScope => "nearest-scope".to_string(),
-        QuerySearchRule::ActiveScopes { order } => format!("active-scopes({})", scope_order(order)),
-        QuerySearchRule::NamedScope(name) => format!("named-scope({name})"),
-        QuerySearchRule::WholePublication => "whole-publication".to_string(),
-    }
-}
-
-fn scope_order(order: &ScopeSearchOrder) -> &'static str {
-    match order {
-        ScopeSearchOrder::NearestToGlobal => "nearest-to-global",
-        ScopeSearchOrder::GlobalToNearest => "global-to-nearest",
-    }
-}
-
-fn query_ordering(ordering: &QueryOrdering) -> String {
-    match ordering {
-        QueryOrdering::PublicationTree => "publication-tree".to_string(),
-        QueryOrdering::SourceOrder => "source-order".to_string(),
-        QueryOrdering::Raw(value) => value.clone(),
-    }
-}
-
-fn query_visibility(visibility: &QueryVisibility) -> String {
-    match visibility {
-        QueryVisibility::VisibleFromOrigin => "visible-from-origin".to_string(),
-        QueryVisibility::IncludeHidden => "include-hidden".to_string(),
-    }
-}
-
-fn query_fallback(fallback: &QueryFallback) -> String {
-    match fallback {
-        QueryFallback::Empty => "empty".to_string(),
-        QueryFallback::Error => "error".to_string(),
-        QueryFallback::Raw(value) => value.clone(),
-    }
-}
-
-fn query_ambiguity(ambiguity: &QueryAmbiguity) -> String {
-    match ambiguity {
-        QueryAmbiguity::AllowMany => "allow-many".to_string(),
-        QueryAmbiguity::Error => "error".to_string(),
-        QueryAmbiguity::First => "first".to_string(),
-    }
-}
-
-fn filter_op(op: &FilterOp) -> String {
-    match op {
-        FilterOp::Equals => "==".to_string(),
-        FilterOp::Contains => "contains".to_string(),
-        FilterOp::Raw(value) => value.clone(),
     }
 }
 
@@ -643,17 +379,6 @@ fn format_validation_error(error: &ValidationError) -> String {
             scope_id,
             root_node,
         } => format!("invalid root node {root_node} for scope {scope_id}"),
-        ValidationError::MissingProjectionOrigin {
-            projection_id,
-            origin,
-        } => format!("projection {projection_id} has missing origin {origin}"),
-        ValidationError::MissingProjectionQuery {
-            projection_id,
-            query_id,
-        } => format!("projection {projection_id} has missing query {query_id}"),
-        ValidationError::MissingQueryOrigin { query_id, origin } => {
-            format!("query {query_id} has missing origin {origin}")
-        }
         ValidationError::MissingPropertyOwner { property_id, owner } => {
             format!("property {property_id} has missing owner {owner}")
         }

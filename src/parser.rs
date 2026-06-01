@@ -11,7 +11,7 @@ use crate::model::*;
 
 mod calls;
 mod markers;
-mod projections;
+mod scopes;
 mod world;
 
 #[derive(Debug)]
@@ -22,10 +22,6 @@ pub enum ParseError {
         source: io::Error,
     },
     NonUtf8Path(PathBuf),
-    UnsupportedGlob {
-        source_path: String,
-        pattern: String,
-    },
     Typst {
         source_path: String,
         diagnostics: Vec<String>,
@@ -40,13 +36,6 @@ impl fmt::Display for ParseError {
             }
             Self::Io { path, source } => write!(f, "{}: {source}", path.display()),
             Self::NonUtf8Path(path) => write!(f, "path is not valid UTF-8: {}", path.display()),
-            Self::UnsupportedGlob {
-                source_path,
-                pattern,
-            } => write!(
-                f,
-                "{source_path}: unsupported publisher.children glob pattern {pattern:?}"
-            ),
             Self::Typst {
                 source_path,
                 diagnostics,
@@ -132,22 +121,6 @@ impl PublicationParser {
             let parsed = self.parsed_files.get(source_path).unwrap();
             for scope in &parsed.scopes {
                 publication.add_scope(scope.clone());
-            }
-        }
-
-        projections::add_inherited_nav_projections(
-            &mut publication,
-            &self.parsed_files,
-            &self.reachable_order,
-        );
-
-        for source_path in &self.reachable_order {
-            let parsed = self.parsed_files.get(source_path).unwrap();
-            for query in &parsed.queries {
-                publication.add_query(query.clone());
-            }
-            for projection in &parsed.projections {
-                publication.add_projection(projection.clone());
             }
         }
 
@@ -247,70 +220,6 @@ impl PublicationParser {
         Ok(())
     }
 
-    fn expand_children_glob(
-        &self,
-        source_path: &str,
-        pattern: &str,
-    ) -> Result<Vec<String>, ParseError> {
-        let Some(star_index) = pattern.find('*') else {
-            return Ok(vec![normalize_source_path(pattern)]);
-        };
-
-        let slash_index = pattern[..star_index].rfind('/').map(|index| index + 1);
-        let (directory, file_pattern) = match slash_index {
-            Some(index) => (&pattern[..index], &pattern[index..]),
-            None => ("", pattern),
-        };
-        let Some(file_star_index) = file_pattern.find('*') else {
-            return Err(ParseError::UnsupportedGlob {
-                source_path: source_path.to_string(),
-                pattern: pattern.to_string(),
-            });
-        };
-        if file_pattern[file_star_index + 1..].contains('*') || directory.contains('*') {
-            return Err(ParseError::UnsupportedGlob {
-                source_path: source_path.to_string(),
-                pattern: pattern.to_string(),
-            });
-        }
-
-        let prefix = &file_pattern[..file_star_index];
-        let suffix = &file_pattern[file_star_index + 1..];
-        let directory_path = self.root_dir.join(directory);
-        let mut matches = Vec::new();
-
-        for entry in fs::read_dir(&directory_path).map_err(|source| ParseError::Io {
-            path: directory_path.clone(),
-            source,
-        })? {
-            let entry = entry.map_err(|source| ParseError::Io {
-                path: directory_path.clone(),
-                source,
-            })?;
-            let file_type = entry.file_type().map_err(|source| ParseError::Io {
-                path: entry.path(),
-                source,
-            })?;
-            if !file_type.is_file() {
-                continue;
-            }
-
-            let file_name = entry
-                .file_name()
-                .into_string()
-                .map_err(|_| ParseError::NonUtf8Path(entry.path()))?;
-            if file_name.starts_with(prefix) && file_name.ends_with(suffix) {
-                let rel_path = normalize_source_path(&format!("{directory}{file_name}"));
-                if rel_path != source_path {
-                    matches.push(rel_path);
-                }
-            }
-        }
-
-        matches.sort();
-        Ok(matches)
-    }
-
     fn all_typ_files(&self) -> Result<BTreeSet<String>, ParseError> {
         let mut files = BTreeSet::new();
         self.collect_typ_files("", &self.root_dir, &mut files)?;
@@ -365,13 +274,9 @@ struct ParsedFile {
     title: Option<Title>,
     scopes: Vec<Scope>,
     properties: Vec<Property>,
-    queries: Vec<Query>,
-    projections: Vec<Projection>,
     warnings: Vec<ParseWarning>,
-    nav_suppressed: bool,
     declaration_order: usize,
     property_count: usize,
-    projection_count: usize,
 }
 
 impl ParsedFile {
@@ -384,13 +289,9 @@ impl ParsedFile {
             title: None,
             scopes: Vec::new(),
             properties: Vec::new(),
-            queries: Vec::new(),
-            projections: Vec::new(),
             warnings: Vec::new(),
-            nav_suppressed: false,
             declaration_order: 0,
             property_count: 0,
-            projection_count: 0,
         }
     }
 
@@ -463,21 +364,6 @@ impl ParsedFile {
             self.node_id, self.property_count
         ))
     }
-
-    pub(super) fn next_query_id(&mut self, kind: &str) -> QueryId {
-        QueryId::new(format!(
-            "query:{}:{kind}:{}",
-            self.node_id, self.projection_count
-        ))
-    }
-
-    pub(super) fn next_projection_id(&mut self, kind: &str) -> ProjectionId {
-        self.projection_count += 1;
-        ProjectionId::new(format!(
-            "projection:{}:{kind}:{}",
-            self.node_id, self.projection_count
-        ))
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -521,35 +407,6 @@ fn node_id(source_path: &str) -> NodeId {
 
 pub(super) fn property_id(node_id: &NodeId, key: &str) -> PropertyId {
     PropertyId::new(format!("prop:{node_id}:{key}"))
-}
-
-pub(super) fn unique_scope_id(kind: &str, node_id: &NodeId, scopes: &[Scope]) -> ScopeId {
-    let base = format!("{kind}:{node_id}");
-    if !scopes.iter().any(|scope| scope.id.as_str() == base) {
-        return ScopeId::new(base);
-    }
-
-    let mut index = 2;
-    loop {
-        let candidate = format!("{kind}:{node_id}:{index}");
-        if !scopes
-            .iter()
-            .any(|scope| scope.id.as_str() == candidate.as_str())
-        {
-            return ScopeId::new(candidate);
-        }
-        index += 1;
-    }
-}
-
-pub(super) fn scope_kind(kind: &str) -> ScopeKind {
-    match kind {
-        "nav" => ScopeKind::Nav,
-        "outline" => ScopeKind::Outline,
-        "reference" => ScopeKind::Reference,
-        "bibliography" => ScopeKind::Bibliography,
-        other => ScopeKind::Other(other.to_string()),
-    }
 }
 
 pub(super) fn normalize_source_path(path: &str) -> String {

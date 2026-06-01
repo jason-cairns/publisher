@@ -37,18 +37,6 @@ pub enum ValidationError {
         scope_id: ScopeId,
         root_node: NodeId,
     },
-    MissingProjectionOrigin {
-        projection_id: ProjectionId,
-        origin: NodeId,
-    },
-    MissingProjectionQuery {
-        projection_id: ProjectionId,
-        query_id: QueryId,
-    },
-    MissingQueryOrigin {
-        query_id: QueryId,
-        origin: NodeId,
-    },
     MissingPropertyOwner {
         property_id: PropertyId,
         owner: NodeId,
@@ -73,8 +61,6 @@ pub fn validate_publication(publication: &Publication) -> ValidationReport {
     validate_duplicate_publication_scope_titles(publication, &mut report);
     validate_duplicate_bibliographies(publication, &mut report);
     validate_properties(publication, &mut report);
-    validate_queries(publication, &mut report);
-    validate_projections(publication, &mut report);
 
     report
 }
@@ -236,37 +222,6 @@ fn validate_properties(publication: &Publication, report: &mut ValidationReport)
             report.errors.push(ValidationError::MissingPropertyOwner {
                 property_id: property.id.clone(),
                 owner: property.owning_node.clone(),
-            });
-        }
-    }
-}
-
-fn validate_queries(publication: &Publication, report: &mut ValidationReport) {
-    for query in &publication.queries {
-        if publication.node(&query.origin_node).is_none() {
-            report.errors.push(ValidationError::MissingQueryOrigin {
-                query_id: query.id.clone(),
-                origin: query.origin_node.clone(),
-            });
-        }
-    }
-}
-
-fn validate_projections(publication: &Publication, report: &mut ValidationReport) {
-    for projection in &publication.projections {
-        if publication.node(&projection.origin_node).is_none() {
-            report
-                .errors
-                .push(ValidationError::MissingProjectionOrigin {
-                    projection_id: projection.id.clone(),
-                    origin: projection.origin_node.clone(),
-                });
-        }
-
-        if publication.query(&projection.query).is_none() {
-            report.errors.push(ValidationError::MissingProjectionQuery {
-                projection_id: projection.id.clone(),
-                query_id: projection.query.clone(),
             });
         }
     }

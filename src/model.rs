@@ -97,76 +97,15 @@ impl fmt::Display for PropertyId {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct QueryId(String);
-
-impl QueryId {
-    pub fn new(value: impl Into<String>) -> Self {
-        Self(value.into())
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl From<&str> for QueryId {
-    fn from(value: &str) -> Self {
-        Self::new(value)
-    }
-}
-
-impl From<String> for QueryId {
-    fn from(value: String) -> Self {
-        Self::new(value)
-    }
-}
-
-impl fmt::Display for QueryId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_str())
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct ProjectionId(String);
-
-impl ProjectionId {
-    pub fn new(value: impl Into<String>) -> Self {
-        Self(value.into())
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl From<&str> for ProjectionId {
-    fn from(value: &str) -> Self {
-        Self::new(value)
-    }
-}
-
-impl From<String> for ProjectionId {
-    fn from(value: String) -> Self {
-        Self::new(value)
-    }
-}
-
-impl fmt::Display for ProjectionId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_str())
-    }
-}
-
+/// Implementation machinery: the typed publication model the parser builds and
+/// the renderer consumes. `Node`/`Scope` are internal provenance and region
+/// units, not user-facing PRD-003 authoring concepts.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Publication {
     pub root_node: NodeId,
     pub nodes: Vec<Node>,
     pub scopes: Vec<Scope>,
     pub properties: Vec<Property>,
-    pub queries: Vec<Query>,
-    pub projections: Vec<Projection>,
     pub parse_warnings: Vec<ParseWarning>,
 }
 
@@ -178,8 +117,6 @@ impl Publication {
             nodes: vec![root],
             scopes: vec![Scope::global(root_node.clone())],
             properties: Vec::new(),
-            queries: Vec::new(),
-            projections: Vec::new(),
             parse_warnings: Vec::new(),
         };
         publication.ensure_current_page_scope(&root_node);
@@ -222,19 +159,6 @@ impl Publication {
         self.properties.push(property);
     }
 
-    pub fn add_query(&mut self, query: Query) {
-        self.queries.push(query);
-    }
-
-    pub fn add_projection(&mut self, projection: Projection) {
-        if let Some(node) = self.node_mut(&projection.origin_node) {
-            if !node.projections.contains(&projection.id) {
-                node.projections.push(projection.id.clone());
-            }
-        }
-        self.projections.push(projection);
-    }
-
     pub fn add_parse_warning(&mut self, warning: ParseWarning) {
         self.parse_warnings.push(warning);
     }
@@ -253,16 +177,6 @@ impl Publication {
 
     pub fn property(&self, id: &PropertyId) -> Option<&Property> {
         self.properties.iter().find(|property| &property.id == id)
-    }
-
-    pub fn query(&self, id: &QueryId) -> Option<&Query> {
-        self.queries.iter().find(|query| &query.id == id)
-    }
-
-    pub fn projection(&self, id: &ProjectionId) -> Option<&Projection> {
-        self.projections
-            .iter()
-            .find(|projection| &projection.id == id)
     }
 
     pub fn properties_for_node(&self, node_id: &NodeId) -> Vec<&Property> {
@@ -399,7 +313,6 @@ pub struct Node {
     pub children: Vec<NodeId>,
     pub properties: Vec<PropertyId>,
     pub explicit_scopes: Vec<ScopeId>,
-    pub projections: Vec<ProjectionId>,
 }
 
 impl Node {
@@ -414,7 +327,6 @@ impl Node {
             children: Vec::new(),
             properties: Vec::new(),
             explicit_scopes: Vec::new(),
-            projections: Vec::new(),
         }
     }
 
@@ -535,11 +447,6 @@ pub enum ScopeKind {
     Global,
     CurrentPage,
     Publication,
-    Nav,
-    Outline,
-    Reference,
-    Bibliography,
-    Other(String),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -600,176 +507,6 @@ impl PropertySource {
     pub fn is_implicit(&self) -> bool {
         matches!(self, Self::Implicit { .. } | Self::Heading { .. })
     }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Query {
-    pub id: QueryId,
-    pub origin_node: NodeId,
-    pub selection: SourcedValue<QuerySelection>,
-    pub search: SourcedValue<QuerySearchRule>,
-    pub filters: Vec<QueryFilter>,
-    pub ordering: SourcedValue<QueryOrdering>,
-    pub visibility: SourcedValue<QueryVisibility>,
-    pub fallback: SourcedValue<QueryFallback>,
-    pub ambiguity: SourcedValue<QueryAmbiguity>,
-}
-
-impl Query {
-    pub fn new(id: impl Into<QueryId>, origin_node: impl Into<NodeId>) -> Self {
-        Self {
-            id: id.into(),
-            origin_node: origin_node.into(),
-            selection: SourcedValue::defaulted(QuerySelection::Nodes),
-            search: SourcedValue::defaulted(QuerySearchRule::NearestScope),
-            filters: Vec::new(),
-            ordering: SourcedValue::defaulted(QueryOrdering::PublicationTree),
-            visibility: SourcedValue::defaulted(QueryVisibility::VisibleFromOrigin),
-            fallback: SourcedValue::defaulted(QueryFallback::Empty),
-            ambiguity: SourcedValue::defaulted(QueryAmbiguity::AllowMany),
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Projection {
-    pub id: ProjectionId,
-    pub origin_node: NodeId,
-    pub kind: ProjectionKind,
-    pub query: QueryId,
-    pub rendering_attributes: Vec<Attribute>,
-    pub suppression: ProjectionSuppression,
-}
-
-impl Projection {
-    pub fn new(
-        id: impl Into<ProjectionId>,
-        origin_node: impl Into<NodeId>,
-        kind: ProjectionKind,
-        query: impl Into<QueryId>,
-    ) -> Self {
-        Self {
-            id: id.into(),
-            origin_node: origin_node.into(),
-            kind,
-            query: query.into(),
-            rendering_attributes: Vec::new(),
-            suppression: ProjectionSuppression::NotSuppressed,
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SourcedValue<T> {
-    pub value: T,
-    pub source: ValueSource,
-}
-
-impl<T> SourcedValue<T> {
-    pub fn explicit(value: T) -> Self {
-        Self {
-            value,
-            source: ValueSource::Explicit,
-        }
-    }
-
-    pub fn defaulted(value: T) -> Self {
-        Self {
-            value,
-            source: ValueSource::Defaulted,
-        }
-    }
-
-    pub fn is_explicit(&self) -> bool {
-        self.source == ValueSource::Explicit
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ValueSource {
-    Explicit,
-    Defaulted,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum QuerySelection {
-    Nodes,
-    Scopes,
-    Properties,
-    ResolvedTarget,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum QuerySearchRule {
-    CurrentNode,
-    CurrentScope,
-    NearestScope,
-    ActiveScopes { order: ScopeSearchOrder },
-    NamedScope(String),
-    WholePublication,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ScopeSearchOrder {
-    NearestToGlobal,
-    GlobalToNearest,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct QueryFilter {
-    pub target: String,
-    pub op: FilterOp,
-    pub value: Value,
-    pub source: ValueSource,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum FilterOp {
-    Equals,
-    Contains,
-    Raw(String),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum QueryOrdering {
-    PublicationTree,
-    SourceOrder,
-    Raw(String),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum QueryVisibility {
-    VisibleFromOrigin,
-    IncludeHidden,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum QueryFallback {
-    Empty,
-    Error,
-    Raw(String),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum QueryAmbiguity {
-    AllowMany,
-    Error,
-    First,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ProjectionKind {
-    Outline,
-    Navigation,
-    Bibliography,
-    Reference,
-    Other(String),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ProjectionSuppression {
-    NotSuppressed,
-    Suppressed { reason: String },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

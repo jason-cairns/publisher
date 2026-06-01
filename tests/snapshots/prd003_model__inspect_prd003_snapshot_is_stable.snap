@@ -1,5 +1,5 @@
 ---
-source: tests/inspect_api_sketch.rs
+source: tests/prd003_model.rs
 expression: "inspect_publication(&publication, &report, &options)"
 ---
 Publication
@@ -7,9 +7,7 @@ Publication
   nodes: 7
   scopes: 15
   properties: 18
-  queries: 0
-  projections: 0
-  warnings: 5
+  warnings: 4
   validation-errors: 0
 
 Tree
@@ -38,8 +36,6 @@ Node index.typ
     global(index.typ)
     current-page(index.typ)
     publication(index.typ)
-  projections:
-    <none>
 
 Node writing.typ
   id: writing parent=index.typ
@@ -58,8 +54,6 @@ Node writing.typ
     publication(index.typ)
     current-page(writing.typ)
     publication(writing.typ)
-  projections:
-    <none>
 
 Node writing/blog-1.typ
   id: writing/blog-1 parent=writing.typ
@@ -79,8 +73,6 @@ Node writing/blog-1.typ
     publication(writing.typ)
     current-page(writing/blog-1.typ)
     publication(writing/blog-1.typ)
-  projections:
-    <none>
 
 Node writing/blog-2.typ
   id: writing/blog-2 parent=writing.typ
@@ -100,8 +92,6 @@ Node writing/blog-2.typ
     publication(writing.typ)
     current-page(writing/blog-2.typ)
     publication(writing/blog-2.typ)
-  projections:
-    <none>
 
 Node thesis/intro.typ
   id: thesis/intro parent=index.typ
@@ -120,8 +110,6 @@ Node thesis/intro.typ
     publication(index.typ)
     current-page(thesis/intro.typ)
     publication(thesis/intro.typ)
-  projections:
-    <none>
 
 Node thesis/ch-1.typ
   id: thesis/ch-1 parent=thesis/intro.typ
@@ -141,8 +129,6 @@ Node thesis/ch-1.typ
     publication(thesis/intro.typ)
     current-page(thesis/ch-1.typ)
     publication(thesis/ch-1.typ)
-  projections:
-    <none>
 
 Node cv.typ
   id: cv parent=index.typ
@@ -160,8 +146,6 @@ Node cv.typ
     publication(index.typ)
     current-page(cv.typ)
     publication(cv.typ)
-  projections:
-    <none>
 
 Scopes
   global kind=global name=global root=index.typ extent=descendants implicit order=<none>
@@ -209,10 +193,7 @@ Properties
   cv.typ owns source-path = "cv.typ" implicit(source path)
   cv.typ owns title = "CV" implicit(source-heading level=1)
 
-Projections and Queries
-
 Parse Warnings
-  unsupported-publisher-call writing.typ: unsupported publisher marker preserved for review: unknown marker kind "in-scope"
   duplicate-scope-title: duplicate scope title "Writing" used by scope ids: writing, duplicate-title-a, duplicate-title-b
   duplicate-bibliography: duplicate bibliography calls in scope home: writing/blog-1.typ, writing/blog-2.typ, thesis/intro.typ, thesis/ch-1.typ
   duplicate-bibliography: duplicate bibliography calls in scope thesis: thesis/intro.typ, thesis/ch-1.typ
