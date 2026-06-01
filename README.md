@@ -31,7 +31,7 @@ into a single document.
 `index.typ`:
 
 ```typ
-#import "publisher.typ": scope, publish
+#import "@local/publisher:0.1.0": scope, publish
 
 = My Site
 
@@ -45,7 +45,7 @@ into a single document.
 `thesis/intro.typ`:
 
 ```typ
-#import "../publisher.typ": scope, publish
+#import "@local/publisher:0.1.0": scope, publish
 
 = Thesis Introduction <thesis-intro>
 
@@ -65,25 +65,6 @@ across the scope boundary it renders as `Thesis Introduction, Thesis`.
 See `examples/discovery_site/` for a complete fixture, and
 `docs/api-sketch.typ` for the full authoring shape.
 
-## Usage
-
-```sh
-# One HTML page per source document (default output: ./build)
-cargo run -- render --root index.typ --to html --out build
-
-# The whole publication as one PDF
-cargo run -- render --root index.typ --to pdf
-
-# A single named scope as its own PDF
-cargo run -- render --root index.typ --scope thesis --to pdf
-
-# Inspect scopes, routes, active-scope stacks, and diagnostics
-cargo run -- inspect --root index.typ scopes
-```
-
-Without `--scope`, an HTML render produces every page and a PDF render covers
-the whole publication. With `--scope <id>`, only that region is rendered.
-
 ## Installation
 
 ```sh
@@ -94,8 +75,46 @@ cargo install --path . --locked
 cargo install --git https://github.com/jason-cairns/publisher --locked
 ```
 
-This installs the `publisher` command, so the examples above can be run as
-`publisher render ...` and `publisher inspect ...`.
+This installs the `publisher` command.
+
+Install the Typst marker helpers into Typst's local package directory as well:
+
+```sh
+./scripts/install-typst-package.sh
+```
+
+The script copies `typst/typst.toml` and `typst/lib.typ` to the standard local
+package path `{data-dir}/typst/packages/local/publisher/0.1.0`. On macOS, for
+example, `{data-dir}` is usually `~/Library/Application Support`; set
+`PUBLISHER_TYPST_DATA_DIR` to override it.
+
+Then import the helpers by package name in publication sources:
+
+```typ
+#import "@local/publisher:0.1.0": scope, publish
+```
+
+Use that package import instead of copying a `publisher.typ` file into each
+project.
+
+## Usage
+
+```sh
+# One HTML page per source document (default output: ./build)
+publisher render --root index.typ --to html --out build
+
+# The whole publication as one PDF
+publisher render --root index.typ --to pdf
+
+# A single named scope as its own PDF
+publisher render --root index.typ --scope thesis --to pdf
+
+# Inspect scopes, routes, active-scope stacks, and diagnostics
+publisher inspect --root index.typ scopes
+```
+
+Without `--scope`, an HTML render produces every page and a PDF render covers
+the whole publication. With `--scope <id>`, only that region is rendered.
 
 ## How rendering works
 

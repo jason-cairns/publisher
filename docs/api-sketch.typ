@@ -8,7 +8,6 @@ Authors declare publication edges and scopes, while ordinary Typst calls remain 
 ```text
 /
   index.typ
-  publisher.typ
   writing.typ
   writing/
     blog-1.typ
@@ -24,7 +23,7 @@ Authors declare publication edges and scopes, while ordinary Typst calls remain 
 == index.typ
 
 ```typ
-#import "publisher.typ": scope, publish
+#import "@local/publisher:0.1.0": scope, publish
 
 = My Publication <home>
 
@@ -41,7 +40,7 @@ Welcome.
 == writing.typ
 
 ```typ
-#import "publisher.typ": scope, publish, in-scope
+#import "@local/publisher:0.1.0": scope, publish, in-scope
 
 = Writing <writing>
 
@@ -60,7 +59,7 @@ Welcome.
 == writing/blog-1.typ
 
 ```typ
-#import "../publisher.typ": scope
+#import "@local/publisher:0.1.0": scope
 
 = Blog One <blog-one>
 
@@ -72,7 +71,7 @@ This article cites @web.
 == writing/blog-2.typ
 
 ```typ
-#import "../publisher.typ": scope
+#import "@local/publisher:0.1.0": scope
 
 = Blog Two <blog-two>
 
@@ -82,7 +81,7 @@ This post refers to thesis material at @thesis-main.
 == thesis/intro.typ
 
 ```typ
-#import "../publisher.typ": scope, publish
+#import "@local/publisher:0.1.0": scope, publish
 
 = Thesis Introduction <thesis-intro>
 
@@ -99,7 +98,7 @@ This source cites @book.
 == thesis/ch-1.typ
 
 ```typ
-#import "../publisher.typ": scope
+#import "@local/publisher:0.1.0": scope
 
 = Chapter One <thesis-main>
 
@@ -111,7 +110,7 @@ The first chapter cites @article.
 == cv.typ
 
 ```typ
-#import "publisher.typ": scope
+#import "@local/publisher:0.1.0": scope
 
 = CV <cv>
 

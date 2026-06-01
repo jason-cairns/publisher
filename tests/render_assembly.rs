@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
+use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use publisher::*;
@@ -32,6 +33,69 @@ fn fixture() -> Publication {
         report.errors
     );
     publication
+}
+
+#[test]
+fn installed_typst_package_imports_work_through_cli() {
+    let temp = temp_dir("publisher-package-cli");
+    let data_dir = temp.join("data");
+    let site_dir = temp.join("site");
+    let out_dir = temp.join("out");
+    fs::create_dir_all(site_dir.join("posts")).unwrap();
+
+    let install = Command::new("sh")
+        .arg("scripts/install-typst-package.sh")
+        .env("PUBLISHER_TYPST_DATA_DIR", &data_dir)
+        .output()
+        .unwrap();
+    assert!(
+        install.status.success(),
+        "install failed:\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr)
+    );
+
+    fs::write(
+        site_dir.join("index.typ"),
+        r#"#import "@local/publisher:0.1.0": scope, publish
+
+= Home
+
+#publish("posts/a.typ")
+#scope("home")
+"#,
+    )
+    .unwrap();
+    fs::write(
+        site_dir.join("posts/a.typ"),
+        r#"#import "@local/publisher:0.1.0": scope
+
+= Post A
+
+#scope("post")
+"#,
+    )
+    .unwrap();
+
+    let render = Command::new(env!("CARGO_BIN_EXE_publisher"))
+        .arg("render")
+        .arg("--root")
+        .arg(site_dir.join("index.typ"))
+        .arg("--to")
+        .arg("html")
+        .arg("--out")
+        .arg(&out_dir)
+        .env("PUBLISHER_TYPST_DATA_DIR", &data_dir)
+        .output()
+        .unwrap();
+    assert!(
+        render.status.success(),
+        "render failed:\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&render.stdout),
+        String::from_utf8_lossy(&render.stderr)
+    );
+    assert!(out_dir.join("index.html").is_file());
+    assert!(out_dir.join("posts/a.html").is_file());
 }
 
 #[test]

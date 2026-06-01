@@ -5,6 +5,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use crate::model::*;
+use crate::package_path;
 use crate::validation::ValidationError;
 
 use typst::diag::{FileError, FileResult, SourceDiagnostic};
@@ -986,10 +987,8 @@ impl RenderWorld {
     }
 
     fn resolve(&self, id: FileId) -> FileResult<PathBuf> {
-        if id.package().is_some() {
-            return Err(FileError::Other(Some(
-                "package imports are not supported during publication rendering".into(),
-            )));
+        if let Some(path) = package_path::resolve(id)? {
+            return Ok(path);
         }
         id.vpath()
             .resolve(&self.root_dir)

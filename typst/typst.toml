@@ -1,0 +1,7 @@
+[package]
+name = "publisher"
+version = "0.1.0"
+entrypoint = "lib.typ"
+authors = ["Jason Cairns"]
+license = "MIT"
+description = "Typst marker helpers for the publisher CLI."

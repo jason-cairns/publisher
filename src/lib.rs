@@ -1,5 +1,6 @@
 pub mod inspect;
 pub mod model;
+mod package_path;
 pub mod parser;
 pub mod render;
 pub mod validation;

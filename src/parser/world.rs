@@ -12,6 +12,8 @@ use typst::utils::LazyHash;
 use typst::{Library, LibraryExt, World};
 use typst_kit::fonts::FontSearcher;
 
+use crate::package_path;
+
 pub(super) struct MarkerWorld {
     root_dir: PathBuf,
     main: FileId,
@@ -40,10 +42,8 @@ impl MarkerWorld {
     }
 
     fn resolve(&self, id: FileId) -> FileResult<PathBuf> {
-        if id.package().is_some() {
-            return Err(FileError::Other(Some(
-                "package imports are not supported during publisher marker evaluation".into(),
-            )));
+        if let Some(path) = package_path::resolve(id)? {
+            return Ok(path);
         }
 
         id.vpath()
@@ -135,9 +135,26 @@ const PLACEHOLDER_PNG: &[u8] = &[
 fn sanitize_for_marker_evaluation(text: &str) -> String {
     let mut sanitized = String::with_capacity(text.len());
     let mut chars = text.chars().peekable();
+    let mut in_string = false;
+    let mut escaped = false;
 
     while let Some(ch) = chars.next() {
-        if ch == '@' && chars.peek().is_some_and(|next| is_label_char(*next)) {
+        if in_string {
+            sanitized.push(ch);
+            if escaped {
+                escaped = false;
+            } else if ch == '\\' {
+                escaped = true;
+            } else if ch == '"' {
+                in_string = false;
+            }
+            continue;
+        }
+
+        if ch == '"' {
+            in_string = true;
+            sanitized.push(ch);
+        } else if ch == '@' && chars.peek().is_some_and(|next| is_label_char(*next)) {
             while chars.peek().is_some_and(|next| is_label_char(*next)) {
                 chars.next();
             }
