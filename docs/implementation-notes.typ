@@ -47,3 +47,4 @@
 
 == Issue follow-up
 - Issue #65 bare-root repro: running `publisher inspect --root index.typ scopes` from a temporary site directory failed as `error: : No such file or directory (os error 2)` because `Path::parent()` for a bare filename is an empty path, not `None`. Correct approach is to normalize an empty parent to `.` anywhere the root's source directory is derived.
+- Issue #71 SVG repro: rendering a document with a valid `assets/Smiley.svg` failed during marker evaluation with `failed to parse SVG (file is not valid utf-8 ...)` because the parser world returned PNG placeholder bytes for every image extension. Correct approach for existing files is to read the real bytes in marker evaluation; placeholder fabrication is not format-invariant.

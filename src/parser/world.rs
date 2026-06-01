@@ -83,10 +83,6 @@ impl World for MarkerWorld {
 
     fn file(&self, id: FileId) -> FileResult<Bytes> {
         let path = self.resolve(id)?;
-        if is_image_path(&path) {
-            return Ok(Bytes::new(PLACEHOLDER_PNG.to_vec()));
-        }
-
         let bytes = fs::read(&path).map_err(|source| file_error(source, &path))?;
         Ok(Bytes::new(bytes))
     }
@@ -114,23 +110,6 @@ fn source_path(id: FileId) -> String {
 fn file_error(error: io::Error, path: &Path) -> FileError {
     FileError::from_io(error, path)
 }
-
-fn is_image_path(path: &Path) -> bool {
-    path.extension()
-        .and_then(|extension| extension.to_str())
-        .is_some_and(|extension| {
-            matches!(
-                extension.to_ascii_lowercase().as_str(),
-                "gif" | "jpg" | "jpeg" | "png" | "svg" | "webp"
-            )
-        })
-}
-
-const PLACEHOLDER_PNG: &[u8] = &[
-    137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0,
-    0, 0, 31, 21, 196, 137, 0, 0, 0, 10, 73, 68, 65, 84, 120, 156, 99, 0, 1, 0, 0, 5, 0, 1, 13, 10,
-    45, 180, 0, 0, 0, 0, 73, 69, 68, 174, 66, 96, 130,
-];
 
 fn sanitize_for_marker_evaluation(text: &str) -> String {
     let mut sanitized = String::with_capacity(text.len());

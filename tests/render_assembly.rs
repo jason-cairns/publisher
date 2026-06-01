@@ -144,6 +144,52 @@ fn cli_accepts_bare_root_filename_from_publication_directory() {
 }
 
 #[test]
+fn marker_evaluation_accepts_real_svg_assets() {
+    let temp = temp_dir("publisher-svg-asset-cli");
+    let data_dir = temp.join("data");
+    let site_dir = temp.join("site");
+    let out_dir = temp.join("out");
+    fs::create_dir_all(site_dir.join("assets")).unwrap();
+    install_typst_package(&data_dir);
+
+    fs::write(
+        site_dir.join("index.typ"),
+        r#"#import "@local/publisher:0.1.0": scope
+
+= Home
+
+#scope("home")
+#figure(image("assets/Smiley.svg"))
+"#,
+    )
+    .unwrap();
+    fs::write(
+        site_dir.join("assets/Smiley.svg"),
+        r#"<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="gold"/></svg>"#,
+    )
+    .unwrap();
+
+    let render = Command::new(env!("CARGO_BIN_EXE_publisher"))
+        .arg("render")
+        .arg("--root")
+        .arg(site_dir.join("index.typ"))
+        .arg("--to")
+        .arg("html")
+        .arg("--out")
+        .arg(&out_dir)
+        .env("PUBLISHER_TYPST_DATA_DIR", &data_dir)
+        .output()
+        .unwrap();
+    assert!(
+        render.status.success(),
+        "render failed:\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&render.stdout),
+        String::from_utf8_lossy(&render.stderr)
+    );
+    assert!(out_dir.join("index.html").is_file());
+}
+
+#[test]
 fn validation_errors_block_rendering() {
     let mut publication = Publication::new(Node::new("index", "index.typ"));
     publication.add_node(Node::new("dup", "index.typ")); // duplicate source path
