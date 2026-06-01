@@ -52,13 +52,12 @@ Implementation terms are noted only where they are still useful for parser, insp
 
 == Implementation vocabulary
 
-The Rust implementation still has internal structures named `Node`, `Query`, and `Projection`.
-They are implementation details from earlier milestones and inspect/debug plumbing, not PRD-003 author-facing concepts.
+The Rust implementation has one internal structure name worth calling out: `Node`.
+It is an implementation detail, not a PRD-003 author-facing concept.
 
 - `Node` means an internal record for one reachable Typst source document.
-- `Query` means an internal selection description retained for legacy projections and inspect output.
-- `Projection` means an internal generated-output placeholder or adapter record.
-- New user-facing documentation should prefer source document, scope, rendered region, route, and generated entrypoint.
+- The old `Query` and `Projection` structures and the `publisher.outline/bibliography/ref/child` APIs were removed in PRD-003.1; rendering now lowers ordinary Typst calls at the generated entrypoint instead.
+- User-facing documentation should prefer source document, scope, rendered region, route, and generated entrypoint.
 
 == Publisher output
 
