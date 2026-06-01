@@ -82,6 +82,19 @@ cargo run -- inspect --root index.typ scopes
 Without `--scope`, an HTML render produces every page and a PDF render covers
 the whole publication. With `--scope <id>`, only that region is rendered.
 
+## Installation
+
+```sh
+# From a local checkout
+cargo install --path . --locked
+
+# From GitHub
+cargo install --git https://github.com/jason-cairns/publisher --locked
+```
+
+This installs the `publisher` command, so the examples above can be run as
+`publisher render ...` and `publisher inspect ...`.
+
 ## How rendering works
 
 The publisher resolves the `#publish(...)` graph and scope extents, then
