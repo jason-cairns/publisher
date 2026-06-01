@@ -132,6 +132,107 @@ fn publish_glob_expands_children_in_sorted_order() {
 }
 
 #[test]
+fn scope_payloads_are_returned_in_spine_order() {
+    let mut publication = Publication::new(Node::new("index", "index.typ"));
+    let mut writing = Node::new("writing", "writing.typ").with_parent("index");
+    writing.children = vec![NodeId::from("writing/post")];
+    let post = Node::new("writing/post", "writing/post.typ").with_parent("writing");
+    publication
+        .node_mut(&NodeId::from("index"))
+        .unwrap()
+        .children = vec![NodeId::from("writing")];
+    publication.add_node(writing);
+    publication.add_node(post);
+
+    publication.add_scope(Scope::explicit("home", ScopeKind::Publication, "index", 0));
+    publication.add_scope(Scope::explicit(
+        "writing",
+        ScopeKind::Publication,
+        "writing",
+        1,
+    ));
+    publication.add_scope_payload(ScopePayload::new(
+        "writing",
+        "nav",
+        Value::String("section".to_string()),
+        1,
+    ));
+    publication.add_scope_payload(ScopePayload::new(
+        "home",
+        "nav",
+        Value::String("site".to_string()),
+        0,
+    ));
+    publication.add_scope_payload(ScopePayload::new(
+        "home",
+        "css",
+        Value::String("site.css".to_string()),
+        2,
+    ));
+
+    let payloads = publication
+        .payloads_for(&NodeId::from("writing/post"), "nav")
+        .unwrap();
+
+    assert_eq!(
+        payloads
+            .iter()
+            .map(|payload| match &payload.value {
+                Value::String(value) => value.as_str(),
+                other => panic!("unexpected payload value: {other:?}"),
+            })
+            .collect::<Vec<_>>(),
+        vec!["site", "section"]
+    );
+}
+
+#[test]
+fn decoded_scope_payload_attaches_to_nearest_preceding_scope() {
+    let temp = std::env::temp_dir().join(format!(
+        "publisher-payload-{}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    std::fs::create_dir_all(&temp).unwrap();
+    std::fs::write(
+        temp.join("index.typ"),
+        r#"#metadata((kind: "scope", id: "home", title: none, tags: ())) <publisher-marker>
+#metadata((kind: "payload", payload_kind: "nav", value: "site")) <publisher-marker>
+#metadata((kind: "scope", id: "writing", title: none, tags: ())) <publisher-marker>
+#metadata((kind: "payload", payload_kind: "nav", value: "section")) <publisher-marker>
+"#,
+    )
+    .unwrap();
+
+    let publication = parse_publication(temp.join("index.typ")).unwrap();
+    let report = publication.validate();
+    assert!(
+        report.errors.is_empty(),
+        "expected valid payload fixture, got {:#?}",
+        report.errors
+    );
+
+    let payloads = publication
+        .payloads_for(&NodeId::from("index"), "nav")
+        .unwrap();
+
+    assert_eq!(
+        payloads
+            .iter()
+            .map(|payload| {
+                let Value::String(value) = &payload.value else {
+                    panic!("unexpected payload value: {:?}", payload.value);
+                };
+                (payload.scope_id.as_str(), value.as_str())
+            })
+            .collect::<Vec<_>>(),
+        vec![("home", "site"), ("writing", "section")]
+    );
+}
+
+#[test]
 fn inspect_snapshot_is_stable() {
     let publication = parse_publication("examples/discovery_site/index.typ").unwrap();
     let report = publication.validate();

@@ -105,6 +105,7 @@ pub struct Publication {
     pub root_node: NodeId,
     pub nodes: Vec<Node>,
     pub scopes: Vec<Scope>,
+    pub scope_payloads: Vec<ScopePayload>,
     pub properties: Vec<Property>,
     pub parse_warnings: Vec<ParseWarning>,
 }
@@ -116,6 +117,7 @@ impl Publication {
             root_node: root_node.clone(),
             nodes: vec![root],
             scopes: vec![Scope::global(root_node.clone())],
+            scope_payloads: Vec::new(),
             properties: Vec::new(),
             parse_warnings: Vec::new(),
         };
@@ -160,6 +162,10 @@ impl Publication {
         self.properties.push(property);
     }
 
+    pub fn add_scope_payload(&mut self, payload: ScopePayload) {
+        self.scope_payloads.push(payload);
+    }
+
     pub fn add_parse_warning(&mut self, warning: ParseWarning) {
         self.parse_warnings.push(warning);
     }
@@ -185,6 +191,27 @@ impl Publication {
             .iter()
             .filter(|property| &property.owning_node == node_id)
             .collect()
+    }
+
+    pub fn payloads_for(
+        &self,
+        node_id: &NodeId,
+        kind: &str,
+    ) -> Result<Vec<&ScopePayload>, ValidationError> {
+        let spine = self.spine_for(node_id)?;
+        let mut payloads = Vec::new();
+
+        for scope_id in spine.scopes {
+            let mut scope_payloads = self
+                .scope_payloads
+                .iter()
+                .filter(|payload| payload.scope_id == scope_id && payload.kind == kind)
+                .collect::<Vec<_>>();
+            scope_payloads.sort_by_key(|payload| payload.declaration_order);
+            payloads.extend(scope_payloads);
+        }
+
+        Ok(payloads)
     }
 
     pub fn property_scope_context(
@@ -461,6 +488,30 @@ pub enum ScopeExtent {
 pub struct Spine {
     pub node: NodeId,
     pub scopes: Vec<ScopeId>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ScopePayload {
+    pub scope_id: ScopeId,
+    pub kind: String,
+    pub value: Value,
+    pub declaration_order: usize,
+}
+
+impl ScopePayload {
+    pub fn new(
+        scope_id: impl Into<ScopeId>,
+        kind: impl Into<String>,
+        value: Value,
+        declaration_order: usize,
+    ) -> Self {
+        Self {
+            scope_id: scope_id.into(),
+            kind: kind.into(),
+            value,
+            declaration_order,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

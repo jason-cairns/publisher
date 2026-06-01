@@ -8,6 +8,9 @@ Some type names are legacy internal names from PRD-001 and PRD-002; they are not
 - `Publication`: `src/model.rs` `Publication`, built by `src/parser.rs` `parse_publication`, validated by `Publication::validate`.
 - Source document record: `src/model.rs` `Node`; one reachable Typst source document with source path, route, parent, ordered published children, properties, and declared scopes.
 - `Scope`: `src/model.rs` `Scope`, `ScopeKind`, and `ScopeExtent`; explicit publication scopes use `ScopeKind::Publication`.
+- Scope-inherited payload: `src/model.rs` `ScopePayload`, stored on `Publication.scope_payloads`.
+  Payloads attach to the nearest preceding explicit publication scope in the declaring source and are queried with `Publication::payloads_for(node_id, kind)`.
+  The query walks `Publication::spine_for(node_id)` and returns payloads outermost-scope first, preserving declaration order within each scope.
 - Source-local boundary: `ScopeKind::CurrentPage`, still named from an earlier milestone, is the implicit source-document scope.
 - `Spine`: `src/model.rs` `Spine`, derived by `Publication::spine_for`, stores active scope ids from global to nearest.
 - `Property`: `src/model.rs` `Property` and `PropertySource`; properties are owned by source documents and interpreted through active scopes.
@@ -23,7 +26,7 @@ Earlier experimental surfaces were removed:
 
 - Typst parsing: `src/parser.rs` uses `typst-syntax` to walk syntax nodes for headings, references, and ordinary bibliography calls.
 - Marker evaluation: `src/parser/world.rs` embeds Typst with a root-confined parser world, and `src/parser/markers.rs` reads `metadata(...) <publisher-marker>` values emitted by the local publisher library.
-- Marker dispatch: `src/parser/calls.rs` converts decoded `publish`, `scope`, and `in-scope` markers into the internal model; `src/parser/scopes.rs` records publication scopes.
+- Marker dispatch: `src/parser/calls.rs` converts decoded `publish`, `scope`, `payload`, and `in-scope` markers into the internal model; `src/parser/scopes.rs` records publication scopes and scope-attached payloads.
 - Fixture root: `examples/discovery_site/index.typ`.
 - Reachability: `#publish(path)` markers produce publication edges. Typst `#include(path)` does not.
 - Warnings: unreachable Typst source files are reported as `ParseWarningKind::UnreachableTypFile`.

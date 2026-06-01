@@ -123,6 +123,13 @@ impl PublicationParser {
 
         for source_path in &self.reachable_order {
             let parsed = self.parsed_files.get(source_path).unwrap();
+            for payload in &parsed.payloads {
+                publication.add_scope_payload(payload.clone());
+            }
+        }
+
+        for source_path in &self.reachable_order {
+            let parsed = self.parsed_files.get(source_path).unwrap();
             for warning in &parsed.warnings {
                 publication.add_parse_warning(warning.clone());
             }
@@ -278,6 +285,7 @@ struct ParsedFile {
     child_paths: Vec<String>,
     title: Option<Title>,
     scopes: Vec<Scope>,
+    payloads: Vec<ScopePayload>,
     properties: Vec<Property>,
     warnings: Vec<ParseWarning>,
     declaration_order: usize,
@@ -293,6 +301,7 @@ impl ParsedFile {
             child_paths: Vec::new(),
             title: None,
             scopes: Vec::new(),
+            payloads: Vec::new(),
             properties: Vec::new(),
             warnings: Vec::new(),
             declaration_order: 0,

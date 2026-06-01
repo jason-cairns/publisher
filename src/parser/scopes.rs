@@ -23,3 +23,34 @@ pub(super) fn record_publication_scope(
     parsed.declaration_order += 1;
     parsed.scopes.push(scope);
 }
+
+pub(super) fn record_scope_payload(parsed: &mut ParsedFile, kind: String, value: String) {
+    let Some(scope_id) = nearest_explicit_publication_scope(parsed) else {
+        parsed.warnings.push(ParseWarning {
+            source_path: Some(parsed.source_path.clone()),
+            kind: ParseWarningKind::UnsupportedPublisherCall,
+            message: format!(
+                "scope payload {kind:?} has no preceding publication scope in {}",
+                parsed.source_path
+            ),
+        });
+        return;
+    };
+
+    parsed.payloads.push(ScopePayload::new(
+        scope_id,
+        kind,
+        Value::String(value),
+        parsed.declaration_order,
+    ));
+    parsed.declaration_order += 1;
+}
+
+fn nearest_explicit_publication_scope(parsed: &ParsedFile) -> Option<ScopeId> {
+    parsed
+        .scopes
+        .iter()
+        .rev()
+        .find(|scope| !scope.implicit && scope.kind == ScopeKind::Publication)
+        .map(|scope| scope.id.clone())
+}

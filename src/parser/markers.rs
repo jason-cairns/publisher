@@ -20,6 +20,10 @@ pub(super) enum PublisherMarker {
         title: Option<String>,
         tags: Vec<String>,
     },
+    ScopePayload {
+        kind: String,
+        value: String,
+    },
     InScope {
         ids: Vec<String>,
     },
@@ -92,6 +96,10 @@ fn decode_marker(value: &Value) -> Result<PublisherMarker, MarkerDecodeError> {
             id: required_string(dict, "id")?,
             title: optional_content_text(dict, "title")?,
             tags: string_array(dict, "tags")?,
+        }),
+        "payload" => Ok(PublisherMarker::ScopePayload {
+            kind: required_string(dict, "payload_kind")?,
+            value: required_string(dict, "value")?,
         }),
         "in-scope" => Ok(PublisherMarker::InScope {
             ids: string_array(dict, "ids")?,

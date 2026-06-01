@@ -60,6 +60,7 @@ pub fn validate_publication(publication: &Publication) -> ValidationReport {
     validate_scopes(publication, &mut report);
     validate_duplicate_publication_scope_titles(publication, &mut report);
     validate_duplicate_bibliographies(publication, &mut report);
+    validate_scope_payloads(publication, &mut report);
     validate_properties(publication, &mut report);
 
     report
@@ -212,6 +213,22 @@ fn validate_duplicate_bibliographies(publication: &Publication, report: &mut Val
         report
             .warnings
             .push(ParseWarning::duplicate_bibliography(&scope_id, sources));
+    }
+}
+
+fn validate_scope_payloads(publication: &Publication, report: &mut ValidationReport) {
+    let scope_ids: BTreeSet<_> = publication
+        .scopes
+        .iter()
+        .map(|scope| scope.id.clone())
+        .collect();
+
+    for payload in &publication.scope_payloads {
+        if !scope_ids.contains(&payload.scope_id) {
+            report.errors.push(ValidationError::MissingScope {
+                scope_id: payload.scope_id.clone(),
+            });
+        }
     }
 }
 
