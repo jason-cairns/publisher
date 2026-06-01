@@ -85,6 +85,13 @@ See `examples/discovery_site/` for a complete fixture, and
 ## Installation
 
 ```sh
+# Install the binary and the Typst package in one step (local checkout)
+make install
+```
+
+`make install` runs the two steps below; run them individually if you prefer.
+
+```sh
 # From a local checkout
 cargo install --path . --locked
 
