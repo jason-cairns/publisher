@@ -262,8 +262,7 @@ fn css_file_payloads_are_inherited_into_html_head() {
 
 = Home
 
-#scope("home")
-#css("styles/site.css")
+#scope("home", includes: css("styles/site.css"))
 #publish("writing/index.typ")
 "#,
     )
@@ -274,8 +273,7 @@ fn css_file_payloads_are_inherited_into_html_head() {
 
 = Writing
 
-#scope("writing")
-#css("styles/writing.css")
+#scope("writing", includes: css("styles/writing.css"))
 "#,
     )
     .unwrap();
@@ -317,6 +315,77 @@ fn css_file_payloads_are_inherited_into_html_head() {
         "ancestor CSS should precede nested CSS"
     );
     assert!(writing.contains(r#"data-publisher-css="styles/writing.css""#));
+}
+
+#[test]
+fn published_children_outline_renders_inline_and_as_scope_nav() {
+    let temp = temp_dir("publisher-outline-published-children-cli");
+    let data_dir = temp.join("data");
+    let site_dir = temp.join("site");
+    let out_dir = temp.join("out");
+    fs::create_dir_all(site_dir.join("writing")).unwrap();
+    install_typst_package(&data_dir);
+
+    fs::write(
+        site_dir.join("index.typ"),
+        r#"#import "@local/publisher:0.1.0": scope, publish, outline, published
+
+= Home
+
+#scope("home", includes: (
+  outline(published.children(), depth: 1),
+))
+
+#outline(published.children(), depth: 1)
+
+#publish("writing/index.typ")
+#publish("cv.typ")
+"#,
+    )
+    .unwrap();
+    fs::write(
+        site_dir.join("writing/index.typ"),
+        r#"#import "@local/publisher:0.1.0": publish
+
+= Writing
+
+#publish("writing/post.typ")
+"#,
+    )
+    .unwrap();
+    fs::write(site_dir.join("writing/post.typ"), "= Blog Post\n").unwrap();
+    fs::write(site_dir.join("cv.typ"), "= CV\n").unwrap();
+
+    let render = Command::new(env!("CARGO_BIN_EXE_publisher"))
+        .arg("render")
+        .arg("--root")
+        .arg(site_dir.join("index.typ"))
+        .arg("--to")
+        .arg("html")
+        .arg("--out")
+        .arg(&out_dir)
+        .env("PUBLISHER_TYPST_DATA_DIR", &data_dir)
+        .output()
+        .unwrap();
+    assert!(
+        render.status.success(),
+        "render failed:\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&render.stdout),
+        String::from_utf8_lossy(&render.stderr)
+    );
+
+    let index = fs::read_to_string(out_dir.join("index.html")).unwrap();
+    assert!(index.matches("publisher-outline").count() >= 2);
+    assert!(index.contains("writing/index.html"));
+    assert!(index.contains(">Writing<"));
+    assert!(index.contains("cv.html"));
+    assert!(index.contains(">CV<"));
+    assert!(!index.contains(">Blog Post<"));
+
+    let writing = fs::read_to_string(out_dir.join("writing/index.html")).unwrap();
+    assert!(writing.contains("publisher-outline"));
+    assert!(writing.contains("index.html"));
+    assert!(writing.contains("../cv.html"));
 }
 
 #[test]

@@ -23,6 +23,7 @@ pub(super) enum PublisherMarker {
     ScopePayload {
         kind: String,
         value: String,
+        depth: Option<i64>,
     },
     InScope {
         ids: Vec<String>,
@@ -100,6 +101,7 @@ fn decode_marker(value: &Value) -> Result<PublisherMarker, MarkerDecodeError> {
         "payload" => Ok(PublisherMarker::ScopePayload {
             kind: required_string(dict, "payload_kind")?,
             value: required_string(dict, "value")?,
+            depth: optional_number(dict, "depth")?,
         }),
         "in-scope" => Ok(PublisherMarker::InScope {
             ids: string_array(dict, "ids")?,
@@ -107,6 +109,17 @@ fn decode_marker(value: &Value) -> Result<PublisherMarker, MarkerDecodeError> {
         other => Err(MarkerDecodeError::new(format!(
             "unknown marker kind {other:?}"
         ))),
+    }
+}
+
+fn optional_number(dict: &Dict, key: &str) -> Result<Option<i64>, MarkerDecodeError> {
+    match field(dict, key) {
+        Some(Value::Int(value)) => Ok(Some(*value)),
+        Some(other) => Err(MarkerDecodeError::new(format!(
+            "field {key:?} must be an integer, got {}",
+            other.ty().short_name()
+        ))),
+        None => Ok(None),
     }
 }
 

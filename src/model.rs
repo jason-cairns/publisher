@@ -496,6 +496,7 @@ pub struct ScopePayload {
     pub source_path: String,
     pub kind: String,
     pub value: Value,
+    pub attributes: Vec<Attribute>,
     pub declaration_order: usize,
 }
 
@@ -512,8 +513,14 @@ impl ScopePayload {
             source_path: source_path.into(),
             kind: kind.into(),
             value,
+            attributes: Vec::new(),
             declaration_order,
         }
+    }
+
+    pub fn with_attribute(mut self, key: impl Into<String>, value: Value) -> Self {
+        self.attributes.push(Attribute::new(key, value));
+        self
     }
 }
 

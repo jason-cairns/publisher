@@ -13,15 +13,20 @@ the whole publication, or any named region of it, to HTML or PDF.
   `#publish("writing/*.typ")` publish matching sources in sorted order.
   (Plain `#include` stays literal: it inlines content without creating a
   separate page.)
-- **`#scope("id", title: [..], tags: (..))`** — marks a region of the
+- **`#scope("id", title: [..], tags: (..), includes: (..))`** — marks a region of the
   publication. A scope covers the source document that declares it and every
   document published beneath it. Scope `id`s are globally unique; `title` is
-  optional display text; `tags` are metadata. Scopes overlap rather than nest.
+  optional display text; `tags` are metadata. `includes` attaches typed items
+  contributed to every covered HTML page. Scopes overlap rather than nest.
 - **`#css("path.css")`** — attaches a CSS file to the nearest preceding scope in
   the source. Every HTML page covered by that scope includes the CSS; nested
   scopes can add more CSS, emitted after inherited files so normal cascade order
   applies. CSS paths are relative to the source file that declares them. CSS is
   HTML-only and does not affect PDF output.
+- **`#outline(published.children(), depth: n)`** — renders an outline over
+  published child documents. Inline, it renders where authored. Inside
+  `scope(includes: (...))`, it renders as navigation before each covered HTML
+  page's body. Ordinary Typst `#outline(...)` remains ordinary.
 - **Ordinary Typst stays ordinary.** `#outline(...)`, `#bibliography(...)`, and
   `@label` references are written exactly as in normal Typst. The publisher
   makes them behave region-locally before compiling — it never asks you to call
@@ -36,16 +41,22 @@ into a single document.
 `index.typ`:
 
 ```typ
-#import "@local/publisher:0.1.0": scope, publish, css
+#import "@local/publisher:0.1.0": scope, publish, css, outline, published
 
 = My Site
 
-#css("styles/site.css")
+#scope(
+  "home",
+  tags: ("nav",),
+  includes: (
+    css("styles/site.css"),
+    outline(published.children(), depth: 1),
+  ),
+)
+
 #publish("writing.typ")
 #publish("thesis/intro.typ")
 #publish("cv.typ")
-
-#scope("home", tags: ("nav",))
 ```
 
 `thesis/intro.typ`:

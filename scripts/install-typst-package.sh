@@ -3,7 +3,7 @@ set -eu
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 manifest="$repo_root/typst/typst.toml"
-lib="$repo_root/typst/lib.typ"
+typst_dir="$repo_root/typst"
 
 name=$(awk -F ' *= *' '$1 == "name" { gsub(/"/, "", $2); print $2; exit }' "$manifest")
 version=$(awk -F ' *= *' '$1 == "version" { gsub(/"/, "", $2); print $2; exit }' "$manifest")
@@ -28,6 +28,7 @@ fi
 
 dest="$data_dir/typst/packages/local/$name/$version"
 mkdir -p "$dest"
-cp "$manifest" "$lib" "$dest/"
+cp "$manifest" "$dest/"
+find "$typst_dir" -maxdepth 1 -type f -name '*.typ' -exec cp {} "$dest/" \;
 
 printf 'Installed @local/%s:%s to %s\n' "$name" "$version" "$dest"

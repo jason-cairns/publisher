@@ -37,6 +37,7 @@ Earlier experimental surfaces were removed:
 - `RenderWorld` is the single Typst world; a `main`-overlay lets a generated entrypoint and its transformed `#include`s compile while imports, `.yml`, and assets resolve against the real source tree.
 - HTML edition: one document per source. Cross-source `@label` references lower to explicit `#link` with real display text; numbered multi-source scopes seed `#counter(heading).update(n)`.
   Scope-inherited CSS payloads read `.css` files relative to the declaring source and inject them into the HTML `<head>` in spine order.
+  Publisher-selector outlines lower to generated HTML navigation over publication child documents; inline calls render in place, while scope-inherited outline payloads render before the body.
 - PDF edition: the selected region is assembled into one `<artifact>.typ` entrypoint with `#metadata(none) <scope-start/end-id>` markers bracketing each scope, authored `#outline` targets bounded with `.after().before()`, authored bibliographies stripped, and one consolidated `#bibliography` emitted over the union of cited sources.
 
 == Inspect and validation

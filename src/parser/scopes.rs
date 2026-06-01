@@ -24,7 +24,12 @@ pub(super) fn record_publication_scope(
     parsed.scopes.push(scope);
 }
 
-pub(super) fn record_scope_payload(parsed: &mut ParsedFile, kind: String, value: String) {
+pub(super) fn record_scope_payload(
+    parsed: &mut ParsedFile,
+    kind: String,
+    value: String,
+    depth: Option<i64>,
+) {
     let Some(scope_id) = nearest_explicit_publication_scope(parsed) else {
         parsed.warnings.push(ParseWarning {
             source_path: Some(parsed.source_path.clone()),
@@ -37,13 +42,17 @@ pub(super) fn record_scope_payload(parsed: &mut ParsedFile, kind: String, value:
         return;
     };
 
-    parsed.payloads.push(ScopePayload::new(
+    let mut payload = ScopePayload::new(
         scope_id,
         parsed.source_path.clone(),
         kind,
         Value::String(value),
         parsed.declaration_order,
-    ));
+    );
+    if let Some(depth) = depth {
+        payload = payload.with_attribute("depth", Value::Number(depth));
+    }
+    parsed.payloads.push(payload);
     parsed.declaration_order += 1;
 }
 

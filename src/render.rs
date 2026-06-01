@@ -305,6 +305,28 @@ fn inject_css(
     Ok(out)
 }
 
+fn scope_outline_navs_source(publication: &Publication, node: &Node) -> String {
+    let Ok(payloads) = publication.payloads_for(&node.id, "outline") else {
+        return String::new();
+    };
+    let mut source = String::new();
+    for payload in payloads {
+        let Some(scope) = publication.scope(&payload.scope_id) else {
+            continue;
+        };
+        let depth = payload_depth(payload).unwrap_or(usize::MAX);
+        source.push_str(&published_children_outline_source(
+            publication,
+            node,
+            &scope.root_node,
+            depth,
+            OutlineSourceKind::HtmlNav,
+        ));
+        source.push('\n');
+    }
+    source
+}
+
 fn resolve_declared_file(
     source_root: &Path,
     declaring_source: &str,
@@ -354,7 +376,9 @@ fn standalone_html_source(
 ) -> String {
     let mut source = node.authored_source.typst.clone();
     source = seed_heading_counter(publication, node, &source);
-    replace_references(&source, |label| {
+    source =
+        replace_publisher_outline_calls(publication, node, &source, OutlineSourceKind::HtmlNav);
+    source = replace_references(&source, |label| {
         let target = labels.get(label)?;
         if target.node_id == node.id {
             return None; // same document: native Typst lookup resolves it
@@ -367,7 +391,13 @@ fn standalone_html_source(
             typst_string_text(label),
             escape_content_text(&display)
         ))
-    })
+    });
+    let navs = scope_outline_navs_source(publication, node);
+    if navs.is_empty() {
+        source
+    } else {
+        format!("{navs}\n{source}")
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -390,6 +420,12 @@ fn render_pdf(
             .map(|scope| entrypoint_file_stem(scope.id.as_str()));
         let mut source = node.authored_source.typst.clone();
         source = strip_bibliography_calls(&source);
+        source = replace_publisher_outline_calls(
+            publication,
+            node,
+            &source,
+            OutlineSourceKind::TypstList,
+        );
         if let Some(scope_label) = &scope_label {
             source = bound_outlines(&source, scope_label);
         }
@@ -623,6 +659,175 @@ fn bound_outline_args(inner: &str, scope_label: &str) -> String {
         let sep = if inner.trim().is_empty() { "" } else { ", " };
         format!("target: heading.where(level: 1){bound}{sep}{inner}")
     }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum OutlineSourceKind {
+    HtmlNav,
+    TypstList,
+}
+
+fn replace_publisher_outline_calls(
+    publication: &Publication,
+    node: &Node,
+    source: &str,
+    kind: OutlineSourceKind,
+) -> String {
+    let mut out = String::with_capacity(source.len());
+    let mut index = 0;
+
+    while index < source.len() {
+        if let Some(open_paren) = outline_call_at(source, index)
+            && let Some(end) = find_call_end(source, open_paren)
+        {
+            let inner = &source[open_paren + 1..end - 1];
+            if let Some(depth) = publisher_children_outline_depth(inner) {
+                out.push_str(&published_children_outline_source(
+                    publication,
+                    node,
+                    &node.id,
+                    depth,
+                    kind,
+                ));
+                index = end;
+                continue;
+            }
+        }
+
+        let ch = source[index..]
+            .chars()
+            .next()
+            .expect("index is within source");
+        out.push(ch);
+        index += ch.len_utf8();
+    }
+
+    out
+}
+
+fn publisher_children_outline_depth(inner: &str) -> Option<usize> {
+    inner
+        .contains("published.children()")
+        .then(|| outline_depth(inner).unwrap_or(usize::MAX))
+}
+
+fn outline_depth(inner: &str) -> Option<usize> {
+    let pos = inner.find("depth:")?;
+    let mut rest = inner[pos + "depth:".len()..].trim_start();
+    let len = rest
+        .chars()
+        .take_while(|ch| ch.is_ascii_digit())
+        .map(char::len_utf8)
+        .sum();
+    if len == 0 {
+        return None;
+    }
+    rest = &rest[..len];
+    rest.parse().ok()
+}
+
+fn payload_depth(payload: &ScopePayload) -> Option<usize> {
+    payload
+        .attributes
+        .iter()
+        .find(|attribute| attribute.key == "depth")
+        .and_then(|attribute| match attribute.value {
+            Value::Number(value) if value >= 0 => Some(value as usize),
+            _ => None,
+        })
+}
+
+fn published_children_outline_source(
+    publication: &Publication,
+    origin: &Node,
+    root_id: &NodeId,
+    depth: usize,
+    kind: OutlineSourceKind,
+) -> String {
+    if depth == 0 {
+        return String::new();
+    }
+    let Some(root) = publication.node(root_id) else {
+        return String::new();
+    };
+    let children = root.children.as_slice();
+    if children.is_empty() {
+        return String::new();
+    }
+
+    match kind {
+        OutlineSourceKind::HtmlNav => format!(
+            "#html.elem(\"nav\", attrs: (class: \"publisher-outline\", role: \"doc-toc\"))[{}]",
+            published_children_outline_list(publication, origin, children, depth, kind)
+        ),
+        OutlineSourceKind::TypstList => {
+            published_children_outline_list(publication, origin, children, depth, kind)
+        }
+    }
+}
+
+fn published_children_outline_list(
+    publication: &Publication,
+    origin: &Node,
+    children: &[NodeId],
+    depth: usize,
+    kind: OutlineSourceKind,
+) -> String {
+    match kind {
+        OutlineSourceKind::HtmlNav => {
+            let items = children
+                .iter()
+                .filter_map(|child_id| publication.node(child_id))
+                .map(|child| {
+                    let label = outline_node_label(publication, child);
+                    let href = relative_route(&origin.html_route, &child.html_route);
+                    let nested = if depth > 1 && !child.children.is_empty() {
+                        published_children_outline_list(
+                            publication,
+                            origin,
+                            &child.children,
+                            depth - 1,
+                            kind,
+                        )
+                    } else {
+                        String::new()
+                    };
+                    format!(
+                        "#html.elem(\"li\")[#link(\"{}\")[{}]{}]",
+                        typst_string_text(&href),
+                        escape_content_text(&label),
+                        nested
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            format!("#html.elem(\"ol\")[{items}]")
+        }
+        OutlineSourceKind::TypstList => children
+            .iter()
+            .filter_map(|child_id| publication.node(child_id))
+            .map(|child| {
+                let label = outline_node_label(publication, child);
+                let nested = if depth > 1 && !child.children.is_empty() {
+                    published_children_outline_list(
+                        publication,
+                        origin,
+                        &child.children,
+                        depth - 1,
+                        kind,
+                    )
+                } else {
+                    String::new()
+                };
+                format!("- {}{}", escape_content_text(&label), nested)
+            })
+            .collect::<Vec<_>>()
+            .join("\n"),
+    }
+}
+
+fn outline_node_label(publication: &Publication, node: &Node) -> String {
+    title_for_node(publication, &node.id).unwrap_or_else(|| node.source_path.clone())
 }
 
 /// Byte offset of the first comma at paren/bracket depth zero, if any.

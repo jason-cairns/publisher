@@ -10,8 +10,9 @@ Implementation terms are noted only where they are still useful for parser, insp
 - Published source documents form an ordered source-document graph.
 - A source document may include ordinary Typst support content with `#include(path)`.
 - Includes are Typst content, not routed publication edges.
-- A source document may declare publisher scopes with `#scope(id, title: none, tags: ())`.
+- A source document may declare publisher scopes with `#scope(id, title: none, tags: (), includes: ())`.
 - A source document may attach CSS file payloads to the nearest preceding publication scope with `#css(path)`.
+- A scope may contribute typed include items to every covered HTML page with `includes: (...)`.
 - A scope covers the declaring source document and its published descendants unless a later render target narrows the rendered region.
 - Scopes may overlap. Child scopes do not shadow inherited scopes.
 - Every source document also has an implicit source-local boundary for source-local HTML, labels, outlines, bibliography behavior, and diagnostics.
@@ -42,6 +43,14 @@ Implementation terms are noted only where they are still useful for parser, insp
 - HTML pages include applicable CSS payloads in active-scope order, outermost first and nearest last.
 - CSS is scoped by page inclusion only. Selectors are ordinary CSS and are not rewritten or isolated.
 - CSS is ignored by PDF rendering.
+
+== Publication outlines
+
+- Ordinary Typst `#outline(...)` remains ordinary unless it is given a publisher selector.
+- `#outline(published.children(), depth: n)` outlines published child documents from the current source-document context.
+- `depth` limits publication graph depth. `depth: 1` lists direct published children only.
+- Inline publisher outlines render where authored.
+- Publisher outlines contributed through `scope(includes: (...))` render as HTML navigation before each covered page body.
 
 == References
 

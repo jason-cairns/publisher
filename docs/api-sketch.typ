@@ -23,7 +23,7 @@ Authors declare publication edges and scopes, while ordinary Typst calls remain 
 == index.typ
 
 ```typ
-#import "@local/publisher:0.1.0": scope, publish, css
+#import "@local/publisher:0.1.0": scope, publish, css, outline, published
 
 = My Publication <home>
 
@@ -34,8 +34,14 @@ Welcome.
 #publish("cv.typ")
 #include "summary.typ"
 
-#scope("home", tags: ("nav",))
-#css("styles/site.css")
+#scope(
+  "home",
+  tags: ("nav",),
+  includes: (
+    css("styles/site.css"),
+    outline(published.children(), depth: 1),
+  ),
+)
 ```
 
 == writing.typ
@@ -124,8 +130,10 @@ about me
 
 - `#publish(path)` creates a routed publication edge.
 - `#include(path)` remains normal Typst inclusion and does not create a routed publication edge.
-- `#scope(id, title: none, tags: ())` declares a publisher scope over the source document and its published descendants.
+- `#scope(id, title: none, tags: (), includes: ())` declares a publisher scope over the source document and its published descendants.
+- `includes` contributes typed items to every HTML page covered by the scope.
 - `#css("path.css")` attaches a CSS file path to the nearest preceding scope in that source; HTML pages covered by the scope include the CSS in scope-spine order.
+- `#outline(published.children(), depth: n)` renders an outline over published child documents. Inline calls render where authored; calls in `scope(includes: ...)` render as navigation before each covered HTML page's body.
 - Ordinary `#outline(...)`, `#bibliography(...)`, `@label` references, counters, and `query(...)` stay authored as ordinary Typst.
 - The publisher may generate scoped Typst entrypoints or per-source HTML adapters before compilation, but those adapters are not author-facing APIs.
 

@@ -34,8 +34,8 @@ fn record_decoded_marker(
         PublisherMarker::PublicationScope { id, title, tags } => {
             scopes::record_publication_scope(parsed, id, title, tags);
         }
-        PublisherMarker::ScopePayload { kind, value } => {
-            scopes::record_scope_payload(parsed, kind, value);
+        PublisherMarker::ScopePayload { kind, value, depth } => {
+            scopes::record_scope_payload(parsed, kind, value, depth);
         }
         // `#in-scope(..ids)[..]` is an authoring-time region context switch handled at
         // render entrypoint generation, not a graph edge or scope declaration.
