@@ -1,5 +1,11 @@
 = PRD-003 implementation slices
 
+*Superseded by `design/prd-003.1-implementation.typ`.*
+This document's "all slices complete" checkpoint is inaccurate: the rendering slices (5–7, 9)
+landed as non-compiling placeholders and no CLI was built.
+It is retained for its audit trail only.
+See PRD-003.1 for the honest assessment and the corrected work plan.
+
 This document is intended as an orchestrator handoff.
 It breaks PRD-003 into independently reviewable slices after the selector/scope discovery report.
 
