@@ -17,6 +17,11 @@ the whole publication, or any named region of it, to HTML or PDF.
   publication. A scope covers the source document that declares it and every
   document published beneath it. Scope `id`s are globally unique; `title` is
   optional display text; `tags` are metadata. Scopes overlap rather than nest.
+- **`#css("path.css")`** — attaches a CSS file to the nearest preceding scope in
+  the source. Every HTML page covered by that scope includes the CSS; nested
+  scopes can add more CSS, emitted after inherited files so normal cascade order
+  applies. CSS paths are relative to the source file that declares them. CSS is
+  HTML-only and does not affect PDF output.
 - **Ordinary Typst stays ordinary.** `#outline(...)`, `#bibliography(...)`, and
   `@label` references are written exactly as in normal Typst. The publisher
   makes them behave region-locally before compiling — it never asks you to call
@@ -31,10 +36,11 @@ into a single document.
 `index.typ`:
 
 ```typ
-#import "@local/publisher:0.1.0": scope, publish
+#import "@local/publisher:0.1.0": scope, publish, css
 
 = My Site
 
+#css("styles/site.css")
 #publish("writing.typ")
 #publish("thesis/intro.typ")
 #publish("cv.typ")

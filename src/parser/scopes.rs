@@ -39,6 +39,7 @@ pub(super) fn record_scope_payload(parsed: &mut ParsedFile, kind: String, value:
 
     parsed.payloads.push(ScopePayload::new(
         scope_id,
+        parsed.source_path.clone(),
         kind,
         Value::String(value),
         parsed.declaration_order,

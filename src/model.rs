@@ -493,6 +493,7 @@ pub struct Spine {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ScopePayload {
     pub scope_id: ScopeId,
+    pub source_path: String,
     pub kind: String,
     pub value: Value,
     pub declaration_order: usize,
@@ -501,12 +502,14 @@ pub struct ScopePayload {
 impl ScopePayload {
     pub fn new(
         scope_id: impl Into<ScopeId>,
+        source_path: impl Into<String>,
         kind: impl Into<String>,
         value: Value,
         declaration_order: usize,
     ) -> Self {
         Self {
             scope_id: scope_id.into(),
+            source_path: source_path.into(),
             kind: kind.into(),
             value,
             declaration_order,

@@ -153,18 +153,21 @@ fn scope_payloads_are_returned_in_spine_order() {
     ));
     publication.add_scope_payload(ScopePayload::new(
         "writing",
+        "writing.typ",
         "nav",
         Value::String("section".to_string()),
         1,
     ));
     publication.add_scope_payload(ScopePayload::new(
         "home",
+        "index.typ",
         "nav",
         Value::String("site".to_string()),
         0,
     ));
     publication.add_scope_payload(ScopePayload::new(
         "home",
+        "index.typ",
         "css",
         Value::String("site.css".to_string()),
         2,

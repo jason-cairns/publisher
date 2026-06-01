@@ -247,6 +247,79 @@ fn whole_publication_pdf_uses_root_stem_as_artifact_name() {
 }
 
 #[test]
+fn css_file_payloads_are_inherited_into_html_head() {
+    let temp = temp_dir("publisher-css-payload-cli");
+    let data_dir = temp.join("data");
+    let site_dir = temp.join("site");
+    let out_dir = temp.join("out");
+    fs::create_dir_all(site_dir.join("styles")).unwrap();
+    fs::create_dir_all(site_dir.join("writing/styles")).unwrap();
+    install_typst_package(&data_dir);
+
+    fs::write(
+        site_dir.join("index.typ"),
+        r#"#import "@local/publisher:0.1.0": scope, publish, css
+
+= Home
+
+#scope("home")
+#css("styles/site.css")
+#publish("writing/index.typ")
+"#,
+    )
+    .unwrap();
+    fs::write(
+        site_dir.join("writing/index.typ"),
+        r#"#import "@local/publisher:0.1.0": scope, css
+
+= Writing
+
+#scope("writing")
+#css("styles/writing.css")
+"#,
+    )
+    .unwrap();
+    fs::write(site_dir.join("styles/site.css"), "body { color: #111; }\n").unwrap();
+    fs::write(
+        site_dir.join("writing/styles/writing.css"),
+        "body { color: #222; }\n",
+    )
+    .unwrap();
+
+    let render = Command::new(env!("CARGO_BIN_EXE_publisher"))
+        .arg("render")
+        .arg("--root")
+        .arg(site_dir.join("index.typ"))
+        .arg("--to")
+        .arg("html")
+        .arg("--out")
+        .arg(&out_dir)
+        .env("PUBLISHER_TYPST_DATA_DIR", &data_dir)
+        .output()
+        .unwrap();
+    assert!(
+        render.status.success(),
+        "render failed:\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&render.stdout),
+        String::from_utf8_lossy(&render.stderr)
+    );
+
+    let index = fs::read_to_string(out_dir.join("index.html")).unwrap();
+    assert!(index.contains(r#"data-publisher-css="styles/site.css""#));
+    assert!(index.contains("body { color: #111; }"));
+    assert!(!index.contains("body { color: #222; }"));
+
+    let writing = fs::read_to_string(out_dir.join("writing/index.html")).unwrap();
+    let site_at = writing.find("body { color: #111; }").unwrap();
+    let writing_at = writing.find("body { color: #222; }").unwrap();
+    assert!(
+        site_at < writing_at,
+        "ancestor CSS should precede nested CSS"
+    );
+    assert!(writing.contains(r#"data-publisher-css="styles/writing.css""#));
+}
+
+#[test]
 fn validation_errors_block_rendering() {
     let mut publication = Publication::new(Node::new("index", "index.typ"));
     publication.add_node(Node::new("dup", "index.typ")); // duplicate source path

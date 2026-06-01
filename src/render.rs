@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{self, Display, Write};
 use std::fs;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use crate::model::*;
 use crate::package_path;
@@ -63,6 +63,10 @@ pub enum RenderError {
     PdfWrite { path: PathBuf, source: io::Error },
     HtmlCompilation { diagnostics: Vec<String> },
     HtmlExport { diagnostics: Vec<String> },
+    CssRead { path: PathBuf, source: io::Error },
+    InvalidCssPath { path: String },
+    InvalidCssPayload { value: Value },
+    MissingHtmlHead,
     HtmlWrite { path: PathBuf, source: io::Error },
 }
 
@@ -105,6 +109,21 @@ impl Display for RenderError {
             ),
             RenderError::HtmlExport { diagnostics } => {
                 write!(f, "failed to export HTML: {}", diagnostics.join("; "))
+            }
+            RenderError::CssRead { path, source } => {
+                write!(f, "failed to read CSS file {}: {source}", path.display())
+            }
+            RenderError::InvalidCssPath { path } => {
+                write!(
+                    f,
+                    "CSS path must be relative and stay within the source root: {path}"
+                )
+            }
+            RenderError::InvalidCssPayload { value } => {
+                write!(f, "CSS payload must be a file path string, got {value:?}")
+            }
+            RenderError::MissingHtmlHead => {
+                write!(f, "HTML export did not contain a </head> insertion point")
             }
             RenderError::HtmlWrite { path, source } => {
                 write!(f, "failed to write HTML {}: {source}", path.display())
@@ -218,6 +237,7 @@ fn render_html_pages(
         let html = typst_html::html(&document).map_err(|diagnostics| RenderError::HtmlExport {
             diagnostics: format_diagnostics(diagnostics.iter()),
         })?;
+        let html = inject_css(publication, node, options, html)?;
 
         let html_path = options.output_dir.join(&node.html_route);
         if let Some(parent) = html_path.parent() {
@@ -237,6 +257,90 @@ fn render_html_pages(
         html_paths,
         ..Default::default()
     })
+}
+
+fn inject_css(
+    publication: &Publication,
+    node: &Node,
+    options: &RenderOptions,
+    html: String,
+) -> Result<String, RenderError> {
+    let payloads = publication.payloads_for(&node.id, "css").map_err(|error| {
+        RenderError::ValidationFailed {
+            errors: vec![error],
+        }
+    })?;
+    if payloads.is_empty() {
+        return Ok(html);
+    }
+
+    let mut styles = String::new();
+    for payload in payloads {
+        let Value::String(css_path) = &payload.value else {
+            return Err(RenderError::InvalidCssPayload {
+                value: payload.value.clone(),
+            });
+        };
+        let path = resolve_declared_file(&options.source_root, &payload.source_path, css_path)?;
+        let css = fs::read_to_string(&path).map_err(|source| RenderError::CssRead {
+            path: path.clone(),
+            source,
+        })?;
+        writeln!(
+            styles,
+            "<style data-publisher-css=\"{}\">\n{}\n</style>",
+            html_attr_text(css_path),
+            css
+        )
+        .unwrap();
+    }
+
+    let Some(head_end) = html.find("</head>") else {
+        return Err(RenderError::MissingHtmlHead);
+    };
+    let mut out = String::with_capacity(html.len() + styles.len());
+    out.push_str(&html[..head_end]);
+    out.push_str(&styles);
+    out.push_str(&html[head_end..]);
+    Ok(out)
+}
+
+fn resolve_declared_file(
+    source_root: &Path,
+    declaring_source: &str,
+    declared_path: &str,
+) -> Result<PathBuf, RenderError> {
+    let declared = Path::new(declared_path);
+    if declared.is_absolute() {
+        return Err(RenderError::InvalidCssPath {
+            path: declared_path.to_string(),
+        });
+    }
+
+    let mut relative = Path::new(declaring_source)
+        .parent()
+        .unwrap_or_else(|| Path::new(""))
+        .to_path_buf();
+    for component in declared.components() {
+        match component {
+            Component::Normal(segment) => relative.push(segment),
+            Component::CurDir => {}
+            Component::ParentDir => {
+                if !relative.pop() {
+                    return Err(RenderError::InvalidCssPath {
+                        path: declared_path.to_string(),
+                    });
+                }
+            }
+            Component::Prefix(_) | Component::RootDir => {
+                return Err(RenderError::InvalidCssPath {
+                    path: declared_path.to_string(),
+                });
+            }
+        }
+    }
+
+    Ok(source_root.join(relative))
 }
 
 /// A source compiled as its own HTML page. Outline and bibliography stay as
@@ -923,6 +1027,14 @@ fn is_label_char(ch: char) -> bool {
 
 fn typst_string_text(value: &str) -> String {
     value.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
+fn html_attr_text(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('"', "&quot;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
 }
 
 /// Escape text for use inside a Typst content block `[...]`.

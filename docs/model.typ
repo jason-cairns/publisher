@@ -11,6 +11,7 @@ Implementation terms are noted only where they are still useful for parser, insp
 - A source document may include ordinary Typst support content with `#include(path)`.
 - Includes are Typst content, not routed publication edges.
 - A source document may declare publisher scopes with `#scope(id, title: none, tags: ())`.
+- A source document may attach CSS file payloads to the nearest preceding publication scope with `#css(path)`.
 - A scope covers the declaring source document and its published descendants unless a later render target narrows the rendered region.
 - Scopes may overlap. Child scopes do not shadow inherited scopes.
 - Every source document also has an implicit source-local boundary for source-local HTML, labels, outlines, bibliography behavior, and diagnostics.
@@ -32,6 +33,15 @@ Implementation terms are noted only where they are still useful for parser, insp
 - Duplicate bibliography calls are diagnostics.
 - Source-local HTML may preserve one ordinary bibliography call for that source.
 - Scope or union render targets may generate a scoped bibliography input so Typst sees exactly one bibliography call for that rendered region.
+
+== CSS
+
+- `#css(path)` accepts a CSS file path string.
+- CSS paths are relative to the source document that declares the payload.
+- CSS attaches to the nearest preceding explicit publication scope in that source.
+- HTML pages include applicable CSS payloads in active-scope order, outermost first and nearest last.
+- CSS is scoped by page inclusion only. Selectors are ordinary CSS and are not rewritten or isolated.
+- CSS is ignored by PDF rendering.
 
 == References
 
