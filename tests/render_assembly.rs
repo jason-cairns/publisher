@@ -16,6 +16,20 @@ fn temp_dir(prefix: &str) -> PathBuf {
     std::env::temp_dir().join(format!("{prefix}-{unique}"))
 }
 
+fn install_typst_package(data_dir: &PathBuf) {
+    let install = Command::new("sh")
+        .arg("scripts/install-typst-package.sh")
+        .env("PUBLISHER_TYPST_DATA_DIR", data_dir)
+        .output()
+        .unwrap();
+    assert!(
+        install.status.success(),
+        "install failed:\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&install.stdout),
+        String::from_utf8_lossy(&install.stderr)
+    );
+}
+
 fn options(output_dir: PathBuf, artifact_name: &str) -> RenderOptions {
     RenderOptions {
         source_root: FIXTURE_ROOT.into(),
@@ -43,17 +57,7 @@ fn installed_typst_package_imports_work_through_cli() {
     let out_dir = temp.join("out");
     fs::create_dir_all(site_dir.join("posts")).unwrap();
 
-    let install = Command::new("sh")
-        .arg("scripts/install-typst-package.sh")
-        .env("PUBLISHER_TYPST_DATA_DIR", &data_dir)
-        .output()
-        .unwrap();
-    assert!(
-        install.status.success(),
-        "install failed:\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&install.stdout),
-        String::from_utf8_lossy(&install.stderr)
-    );
+    install_typst_package(&data_dir);
 
     fs::write(
         site_dir.join("index.typ"),
@@ -96,6 +100,47 @@ fn installed_typst_package_imports_work_through_cli() {
     );
     assert!(out_dir.join("index.html").is_file());
     assert!(out_dir.join("posts/a.html").is_file());
+}
+
+#[test]
+fn cli_accepts_bare_root_filename_from_publication_directory() {
+    let temp = temp_dir("publisher-bare-root-cli");
+    let data_dir = temp.join("data");
+    let site_dir = temp.join("site");
+    let out_dir = temp.join("out");
+    fs::create_dir_all(&site_dir).unwrap();
+    install_typst_package(&data_dir);
+
+    fs::write(
+        site_dir.join("index.typ"),
+        r#"#import "@local/publisher:0.1.0": scope
+
+= Home
+
+#scope("home")
+"#,
+    )
+    .unwrap();
+
+    let render = Command::new(env!("CARGO_BIN_EXE_publisher"))
+        .current_dir(&site_dir)
+        .arg("render")
+        .arg("--root")
+        .arg("index.typ")
+        .arg("--to")
+        .arg("html")
+        .arg("--out")
+        .arg(&out_dir)
+        .env("PUBLISHER_TYPST_DATA_DIR", &data_dir)
+        .output()
+        .unwrap();
+    assert!(
+        render.status.success(),
+        "render failed:\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&render.stdout),
+        String::from_utf8_lossy(&render.stderr)
+    );
+    assert!(out_dir.join("index.html").is_file());
 }
 
 #[test]

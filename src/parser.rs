@@ -65,10 +65,7 @@ struct PublicationParser {
 
 impl PublicationParser {
     fn new(root_path: &Path) -> Result<Self, ParseError> {
-        let root_dir = root_path
-            .parent()
-            .ok_or_else(|| ParseError::RootHasNoParent(root_path.to_path_buf()))?
-            .to_path_buf();
+        let root_dir = root_parent_dir(root_path)?;
         let file_name = root_path
             .file_name()
             .ok_or_else(|| ParseError::RootHasNoParent(root_path.to_path_buf()))?;
@@ -262,6 +259,14 @@ impl PublicationParser {
         }
 
         Ok(())
+    }
+}
+
+fn root_parent_dir(root_path: &Path) -> Result<PathBuf, ParseError> {
+    match root_path.parent() {
+        Some(parent) if parent.as_os_str().is_empty() => Ok(PathBuf::from(".")),
+        Some(parent) => Ok(parent.to_path_buf()),
+        None => Err(ParseError::RootHasNoParent(root_path.to_path_buf())),
     }
 }
 

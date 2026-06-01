@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -95,10 +96,7 @@ fn render(
     out: Option<PathBuf>,
 ) -> Result<(), String> {
     let publication = parse_publication(&root).map_err(|error| error.to_string())?;
-    let source_root = root
-        .parent()
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."));
+    let source_root = source_root_for(&root);
     let output_dir = out.unwrap_or_else(|| PathBuf::from("build"));
 
     let target = match scope {
@@ -131,10 +129,7 @@ fn render(
 fn inspect_scopes(root: PathBuf) -> Result<(), String> {
     let publication = parse_publication(&root).map_err(|error| error.to_string())?;
     let report = publication.validate();
-    let source_root = root
-        .parent()
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."));
+    let source_root = source_root_for(&root);
     let options = InspectOptions::new().source_root(source_root);
 
     print!("{}", inspect_publication(&publication, &report, &options));
@@ -147,4 +142,12 @@ fn inspect_scopes(root: PathBuf) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+fn source_root_for(root: &Path) -> PathBuf {
+    match root.parent() {
+        Some(parent) if parent.as_os_str().is_empty() => PathBuf::from("."),
+        Some(parent) => parent.to_path_buf(),
+        None => PathBuf::from("."),
+    }
 }
