@@ -4,8 +4,7 @@
 
 #scope("writing", title: [Writing], tags: ("nav",))
 
-#publish("writing/blog-1.typ")
-#publish("writing/blog-2.typ")
+#publish("writing/*.typ")
 
 == Local Writing Notes <writing-notes>
 

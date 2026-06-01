@@ -118,6 +118,20 @@ fn scopes_overlap_and_warn_on_duplicate_display_titles() {
 }
 
 #[test]
+fn publish_glob_expands_children_in_sorted_order() {
+    let publication = parse_publication("examples/discovery_site/index.typ").unwrap();
+    let writing = publication.node(&NodeId::from("writing")).unwrap();
+
+    assert_eq!(
+        writing.children,
+        vec![
+            NodeId::from("writing/blog-1"),
+            NodeId::from("writing/blog-2")
+        ]
+    );
+}
+
+#[test]
 fn inspect_snapshot_is_stable() {
     let publication = parse_publication("examples/discovery_site/index.typ").unwrap();
     let report = publication.validate();

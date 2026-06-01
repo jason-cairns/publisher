@@ -9,8 +9,10 @@ the whole publication, or any named region of it, to HTML or PDF.
 
 - **Source document** — one `.typ` file. Each becomes one HTML page.
 - **`#publish("other.typ")`** — adds another source document to the publication
-  graph and renders it as its own page. (Plain `#include` stays literal: it
-  inlines content without creating a separate page.)
+  graph and renders it as its own page. Glob paths such as
+  `#publish("writing/*.typ")` publish matching sources in sorted order.
+  (Plain `#include` stays literal: it inlines content without creating a
+  separate page.)
 - **`#scope("id", title: [..], tags: (..))`** — marks a region of the
   publication. A scope covers the source document that declares it and every
   document published beneath it. Scope `id`s are globally unique; `title` is
