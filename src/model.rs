@@ -142,19 +142,20 @@ impl Publication {
     }
 
     pub fn add_scope(&mut self, scope: Scope) {
-        if let Some(node) = self.node_mut(&scope.root_node) {
-            if !scope.implicit && !node.explicit_scopes.contains(&scope.id) {
-                node.explicit_scopes.push(scope.id.clone());
-            }
+        if let Some(node) = self.node_mut(&scope.root_node)
+            && !scope.implicit
+            && !node.explicit_scopes.contains(&scope.id)
+        {
+            node.explicit_scopes.push(scope.id.clone());
         }
         self.scopes.push(scope);
     }
 
     pub fn add_property(&mut self, property: Property) {
-        if let Some(node) = self.node_mut(&property.owning_node) {
-            if !node.properties.contains(&property.id) {
-                node.properties.push(property.id.clone());
-            }
+        if let Some(node) = self.node_mut(&property.owning_node)
+            && !node.properties.contains(&property.id)
+        {
+            node.properties.push(property.id.clone());
         }
         self.properties.push(property);
     }

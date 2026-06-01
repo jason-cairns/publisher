@@ -99,14 +99,13 @@ fn validate_children(publication: &Publication, report: &mut ValidationReport) {
             }
 
             if let Some(first_parent) = parents_by_child.insert(child_id.clone(), parent.id.clone())
+                && first_parent != parent.id
             {
-                if first_parent != parent.id {
-                    report.errors.push(ValidationError::MultipleParents {
-                        child: child_id.clone(),
-                        first_parent,
-                        second_parent: parent.id.clone(),
-                    });
-                }
+                report.errors.push(ValidationError::MultipleParents {
+                    child: child_id.clone(),
+                    first_parent,
+                    second_parent: parent.id.clone(),
+                });
             }
         }
     }
