@@ -22,7 +22,7 @@ use typst_syntax::{SyntaxKind, SyntaxNode};
 /// Which physical document(s) a render produces.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Edition {
-    /// One HTML document per source document (the PRD-003 invariant).
+    /// One HTML document per source document (the source-document invariant).
     Html,
     /// One combined PDF document assembling the selected region.
     Pdf,

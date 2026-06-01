@@ -1,6 +1,6 @@
 = Publication system rules
 
-This document describes the author-facing PRD-003 model first.
+This document describes the author-facing publication model first.
 Implementation terms are noted only where they are still useful for parser, inspect, or renderer code.
 
 == Author-facing model
@@ -53,10 +53,10 @@ Implementation terms are noted only where they are still useful for parser, insp
 == Implementation vocabulary
 
 The Rust implementation has one internal structure name worth calling out: `Node`.
-It is an implementation detail, not a PRD-003 author-facing concept.
+It is an implementation detail, not an author-facing concept.
 
 - `Node` means an internal record for one reachable Typst source document.
-- The old `Query` and `Projection` structures and the `publisher.outline/bibliography/ref/child` APIs were removed in PRD-003.1; rendering now lowers ordinary Typst calls at the generated entrypoint instead.
+- The old `Query` and `Projection` structures and the `publisher.outline/bibliography/ref/child` APIs were removed; rendering now lowers ordinary Typst calls at the generated entrypoint instead.
 - User-facing documentation should prefer source document, scope, rendered region, route, and generated entrypoint.
 
 == Publisher output

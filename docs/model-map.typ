@@ -1,30 +1,30 @@
 = Implementation model map
 
-This maps the PRD-003 source-document model to current Rust implementation pieces.
+This maps the current source-document model to current Rust implementation pieces.
 Some type names are legacy internal names from PRD-001 and PRD-002; they are not author-facing API language.
 
 == Core implementation records
 
 - `Publication`: `src/model.rs` `Publication`, built by `src/parser.rs` `parse_publication`, validated by `Publication::validate`.
 - Source document record: `src/model.rs` `Node`; one reachable Typst source document with source path, route, parent, ordered published children, properties, and declared scopes.
-- `Scope`: `src/model.rs` `Scope`, `ScopeKind`, and `ScopeExtent`; explicit PRD-003 scopes use `ScopeKind::Publication`.
+- `Scope`: `src/model.rs` `Scope`, `ScopeKind`, and `ScopeExtent`; explicit publication scopes use `ScopeKind::Publication`.
 - Source-local boundary: `ScopeKind::CurrentPage`, still named from an earlier milestone, is the implicit source-document scope.
 - `Spine`: `src/model.rs` `Spine`, derived by `Publication::spine_for`, stores active scope ids from global to nearest.
 - `Property`: `src/model.rs` `Property` and `PropertySource`; properties are owned by source documents and interpreted through active scopes.
 
 == Removed legacy internals
 
-The PRD-001/002 surface was removed in PRD-003.1:
+Earlier experimental surfaces were removed:
 
 - `Query` and `Projection` structures: deleted. Rendering lowers ordinary Typst calls at the generated entrypoint instead of recording projection placeholders.
-- `publisher.child`, `publisher.children`, `publisher.outline`, `publisher.bibliography`, and `publisher.ref`: removed along with the `examples/api_sketch_site/` fixture. Authors use ordinary `#publish`, `#scope`, `#outline`, `#bibliography`, and `@label`.
+- `publisher.child`, `publisher.children`, `publisher.outline`, `publisher.bibliography`, and `publisher.ref`: removed along with the legacy API sketch fixture. Authors use ordinary `#publish`, `#scope`, `#outline`, `#bibliography`, and `@label`.
 
 == Parser
 
 - Typst parsing: `src/parser.rs` uses `typst-syntax` to walk syntax nodes for headings, references, and ordinary bibliography calls.
 - Marker evaluation: `src/parser/world.rs` embeds Typst with a root-confined parser world, and `src/parser/markers.rs` reads `metadata(...) <publisher-marker>` values emitted by the local publisher library.
 - Marker dispatch: `src/parser/calls.rs` converts decoded `publish`, `scope`, and `in-scope` markers into the internal model; `src/parser/scopes.rs` records publication scopes.
-- PRD-003 fixture root: `examples/prd003_discovery_site/index.typ`.
+- Fixture root: `examples/discovery_site/index.typ`.
 - Reachability: `#publish(path)` markers produce publication edges. Typst `#include(path)` does not.
 - Warnings: unreachable Typst source files are reported as `ParseWarningKind::UnreachableTypFile`.
 
@@ -39,4 +39,4 @@ The PRD-001/002 surface was removed in PRD-003.1:
 
 - Inspect output: `src/inspect.rs` `inspect_publication` renders deterministic plain text from typed `Publication` data.
 - CLI: `src/main.rs` exposes `render` and `inspect ... scopes` over the library.
-- Snapshot evidence: `tests/prd003_model.rs` checks PRD-003 inspect output with `insta`; `tests/render_assembly.rs` compiles generated entrypoints and asserts real rendered output.
+- Snapshot evidence: `tests/model.rs` checks inspect output with `insta`; `tests/render_assembly.rs` compiles generated entrypoints and asserts real rendered output.

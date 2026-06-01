@@ -60,7 +60,7 @@ This introduction cites @book.
 A blog post elsewhere can reference the thesis with a normal `@thesis-intro`;
 across the scope boundary it renders as `Thesis Introduction, Thesis`.
 
-See `examples/prd003_discovery_site/` for a complete fixture, and
+See `examples/discovery_site/` for a complete fixture, and
 `docs/api-sketch.typ` for the full authoring shape.
 
 ## Usage
@@ -113,9 +113,8 @@ generates the Typst it hands to the compiler:
 
 ```sh
 cargo test          # model + render tests (compiles real output)
-cargo run --example prd003_discovery   # discovery evidence harness
+cargo run --example discovery   # discovery evidence harness
 ```
 
-Design notes live in `design/` (`prd-003.1-implementation.typ` is the current
-spec); the implementation map is in `docs/model-map.typ` and failed approaches
+Design notes live in `design/`; the implementation map is in `docs/model-map.typ` and failed approaches
 with their corrections are recorded in `docs/implementation-notes.typ`.

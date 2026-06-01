@@ -1,6 +1,6 @@
 = Publisher API sketch
 
-This sketch shows the PRD-003 authoring model.
+This sketch shows the current authoring model.
 Authors declare publication edges and scopes, while ordinary Typst calls remain ordinary Typst.
 
 = Files

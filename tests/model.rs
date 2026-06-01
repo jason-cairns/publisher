@@ -64,8 +64,8 @@ fn validation_reports_core_model_errors_and_parse_warnings() {
 }
 
 #[test]
-fn prd003_scopes_overlap_and_warn_on_duplicate_display_titles() {
-    let publication = parse_publication("examples/prd003_discovery_site/index.typ").unwrap();
+fn scopes_overlap_and_warn_on_duplicate_display_titles() {
+    let publication = parse_publication("examples/discovery_site/index.typ").unwrap();
     let report = publication.validate();
 
     assert!(
@@ -118,10 +118,10 @@ fn prd003_scopes_overlap_and_warn_on_duplicate_display_titles() {
 }
 
 #[test]
-fn inspect_prd003_snapshot_is_stable() {
-    let publication = parse_publication("examples/prd003_discovery_site/index.typ").unwrap();
+fn inspect_snapshot_is_stable() {
+    let publication = parse_publication("examples/discovery_site/index.typ").unwrap();
     let report = publication.validate();
-    let options = InspectOptions::new().source_root("examples/prd003_discovery_site");
+    let options = InspectOptions::new().source_root("examples/discovery_site");
 
     assert!(
         report.errors.is_empty(),

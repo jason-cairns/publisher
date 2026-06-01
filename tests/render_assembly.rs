@@ -4,8 +4,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use publisher::*;
 
-const FIXTURE_ROOT: &str = "examples/prd003_discovery_site";
-const FIXTURE_INDEX: &str = "examples/prd003_discovery_site/index.typ";
+const FIXTURE_ROOT: &str = "examples/discovery_site";
+const FIXTURE_INDEX: &str = "examples/discovery_site/index.typ";
 
 fn temp_dir(prefix: &str) -> PathBuf {
     let unique = SystemTime::now()

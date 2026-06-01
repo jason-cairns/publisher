@@ -15,8 +15,8 @@ use typst::utils::{LazyHash, PicoStr};
 use typst::{Feature, Features, Library, LibraryExt, World};
 use typst_kit::fonts::FontSearcher;
 
-const FIXTURE_ROOT: &str = "examples/prd003_discovery_site";
-const OUTPUT_ROOT: &str = "target/prd-003-discovery";
+const FIXTURE_ROOT: &str = "examples/discovery_site";
+const OUTPUT_ROOT: &str = "target/discovery";
 const MARKER_LABEL: &str = "publisher-marker";
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -38,7 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "full publication",
             compile_html(
                 &repo_root,
-                "target/prd-003-discovery/full-publication.typ",
+                "target/discovery/full-publication.typ",
                 RenderMode::Normal,
             ),
         ),
@@ -46,7 +46,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "thesis scope",
             compile_html(
                 &repo_root,
-                "target/prd-003-discovery/scope-thesis.typ",
+                "target/discovery/scope-thesis.typ",
                 RenderMode::Normal,
             ),
         ),
@@ -54,14 +54,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "writing plus thesis union",
             compile_html(
                 &repo_root,
-                "target/prd-003-discovery/scope-writing-thesis.typ",
+                "target/discovery/scope-writing-thesis.typ",
                 RenderMode::Normal,
             ),
         ),
     ];
 
     let mut report = String::new();
-    writeln!(report, "PRD-003 discovery evidence")?;
+    writeln!(report, "Discovery evidence")?;
     writeln!(report, "fixture: {}", fixture_root.display())?;
     writeln!(report)?;
     writeln!(report, "reachable source documents:")?;
@@ -523,7 +523,7 @@ impl DiscoveryWorld {
     fn resolve(&self, id: FileId) -> FileResult<PathBuf> {
         if id.package().is_some() {
             return Err(FileError::Other(Some(
-                "package imports are not supported in the PRD-003 discovery harness".into(),
+                "package imports are not supported in the discovery harness".into(),
             )));
         }
 

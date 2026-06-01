@@ -99,7 +99,7 @@ impl fmt::Display for PropertyId {
 
 /// Implementation machinery: the typed publication model the parser builds and
 /// the renderer consumes. `Node`/`Scope` are internal provenance and region
-/// units, not user-facing PRD-003 authoring concepts.
+/// units, not user-facing authoring concepts.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Publication {
     pub root_node: NodeId,
